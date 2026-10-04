@@ -257,5 +257,14 @@ sealed partial class MainForm
             connectionPanel.Visible = false; Height = Math.Max(MinimumSize.Height, Height - connectionExtraHeight); connectionExtraHeight = 0;
         }
     }
-    static void OpenManual() => Process.Start(new ProcessStartInfo(FindDocumentation()) { UseShellExecute = true });
+    static void OpenManual()
+    {
+        string manual = FindDocumentation();
+        try { Process.Start(new ProcessStartInfo(manual) { UseShellExecute = true }); }
+        catch (System.ComponentModel.Win32Exception) {
+            var viewer = new ProcessStartInfo("notepad.exe");
+            viewer.ArgumentList.Add(manual);
+            Process.Start(viewer);
+        }
+    }
 }
