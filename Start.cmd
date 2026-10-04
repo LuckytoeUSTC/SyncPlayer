@@ -1,7 +1,9 @@
 @echo off
 cd /d "%~dp0"
-if exist "artifacts\SyncPlayer-1.0.0-win-x64\SyncPlayer.exe" (
-  start "" "artifacts\SyncPlayer-1.0.0-win-x64\SyncPlayer.exe"
-) else (
-  start "" "bin\Release\net10.0-windows\SyncPlayer.exe"
+for /f "delims=" %%D in ('dir /b /ad /o-d "artifacts\SyncPlayer-*-win-x64" 2^>nul') do (
+  if exist "artifacts\%%D\SyncPlayer.exe" (
+    start "" "artifacts\%%D\SyncPlayer.exe"
+    exit /b
+  )
 )
+start "" "bin\Release\net10.0-windows\SyncPlayer.exe"
