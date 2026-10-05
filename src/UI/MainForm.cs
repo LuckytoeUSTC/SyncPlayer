@@ -20,7 +20,7 @@ sealed partial class MainForm : Form
     readonly ToolTip tooltips = new();
     volatile int playbackState, requestedPlaybackState = -1;
     long playbackVersion;
-    readonly TimeInput seek = new() { Maximum = 864000, Width = 140 };
+    readonly TimeInput seek = new() { Maximum = 864000, Width = 180 };
     readonly Label status = Label(Localization.T("就绪")), details = Label("");
     readonly ComboBox localAddress = new AlignedComboBox() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 320 };
     readonly TextBox deviceName = new() { Width = 220 };
@@ -46,6 +46,7 @@ sealed partial class MainForm : Form
     nint masterHandle;
     nint[] localFollowers = [];
     Dictionary<nint, int> localOffsets = new();
+    int mainOffset, appliedMainOffset;
     readonly ConcurrentDictionary<nint, int> localBoundary = new();
     readonly Dictionary<nint, RemoteClock> remoteClocks = new();
     sealed class RemoteClock
@@ -70,6 +71,7 @@ sealed partial class MainForm : Form
     {
         Text = "SyncPlayer"; ClientSize = new Size(900, 720); MinimumSize = new Size(780, 570);
         AutoScaleMode = AutoScaleMode.Dpi;
+        AutoValidate = AutoValidate.EnableAllowFocusChange;
         Font = new Font("Microsoft YaHei UI", 9);
         BackColor = Color.FromArgb(246, 247, 249);
         playbackButton.Emphasized = true; playbackButton.BackColor = Color.FromArgb(70, 78, 90);
@@ -84,6 +86,7 @@ sealed partial class MainForm : Form
         if (connectNetwork) lan.Start();
         ui.Tick += (_, _) => UpdateUi(); ui.Start();
         FormClosed += (_, _) => { ui.Stop(); settingsMenu?.Dispose(); StopEngine(); };
+        FormClosing += (_, e) => { grid.CancelEdit(); e.Cancel = false; cancel.Cancel(); };
         Shown += (_, _) => {
             var area = Screen.FromControl(this).WorkingArea;
             MinimumSize = new Size(Math.Min(MinimumSize.Width, area.Width - 30), Math.Min(MinimumSize.Height, area.Height - 40));

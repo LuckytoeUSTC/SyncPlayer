@@ -37,14 +37,16 @@ Local windows appear first, followed by remote windows grouped by device. The ma
 | --- | --- |
 | Main window | Select the local source at the top. Selecting local followers is optional. |
 | Follow | Check the windows that should follow the source. Uncheck to stop following. With Local sync off, other local windows are hidden and receive no commands. Selections return when switched on again; remote selections remain available. Remote windows require an accepted connection that permits control. |
-| Offset (s) | Enter a positive or negative number of seconds, including decimals such as `0.25` or `-1.5`. The main window is the reference and has no editable offset. |
+| Offset (s) | Enter a positive or negative number of seconds, including decimals such as `0.25` or `-1.5`. The main window also supports offsets. Press Enter or click elsewhere to apply; the left and right arrows adjust by 0.1 seconds. A blank value becomes zero. |
 | Mute | Check to silence that window; uncheck to restore its sound. This works independently of Follow. Muting the main window does not mute the others. |
 | Status | Shows the window role or connection state. Remote device group rows also show network round-trip time. |
 
 Long filenames wrap; hover to read the full name. The list refreshes automatically after opening, closing or changing videos. The square circular-arrow icon also refreshes it manually. Newly discovered local windows start unchecked.
 
-Offset means **this window's position = main window's position + offset**. If the same scene appears at 10 seconds in the main video and 12 seconds in another, enter `2` for the other window. An offset of `-2` places it two seconds before the main window. Changing an enabled follower's offset applies alignment. For unchecked windows, the offset is retained for the current session. A follower before its start waits on the first frame; beyond its end it pauses near the last seekable frame, with a roughly 300 ms decoding guard to prevent automatic replay or playlist advancement. It resumes when its offset enters the valid range again, including after a backward seek or offset edit. A paused follower while the source keeps playing is intentional at these boundaries. Leaving an offset blank commits zero.
+Offset means **this window's position = main window's position + this window's offset − main window's offset**. If the same scene appears at 10 seconds in the main video and 12 seconds in another, enter `2` for the other window. An offset of `-2` places it two seconds before the main window. Changing an enabled follower's offset applies alignment. For unchecked windows, the offset is retained for the current session. A follower before its start waits on the first frame; beyond its end it pauses near the last seekable frame, with a roughly 300 ms decoding guard to prevent automatic replay or playlist advancement. It resumes when its offset enters the valid range again, including after a backward seek or offset edit. A paused follower while the source keeps playing is intentional at these boundaries. Leaving an offset blank commits zero.
 
+
+Changing the main window's offset moves that window by the change in offset; other windows retain their positions when the target is within the video's range. Positions are limited to the video boundaries. The left and right arrows in the seek input also adjust by 0.1 seconds.
 Remote offsets and mute can be changed by the side authorized to control the window. Mute changes made in a remote player are reflected after a network update. Follow selections and offsets are not saved across restarts.
 
 ## 2. Playback and seeking

@@ -1,4 +1,4 @@
-param([string]$Version = '1.0.0')
+param([string]$Version = '1.0.1')
 . (Join-Path $PSScriptRoot 'common.ps1')
 if ($Version -notmatch '^\d+\.\d+\.\d+([-.][A-Za-z0-9.]+)?$') { throw 'Use a semantic version, for example 1.0.0' }
 $output = Join-Path $ProjectRoot "artifacts\SyncPlayer-$Version-win-x64"

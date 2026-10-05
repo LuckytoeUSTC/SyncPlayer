@@ -10,6 +10,7 @@ if ($Video) {
     $cases['--video-test']='video-test-result.txt'
     $cases['--controls-test']='video-test-result.txt'
     $cases['--boundary-test']='boundary-test-result.txt'
+    $cases['--offset-test']='offset-test-result.txt'
 }
 [void][IO.Directory]::CreateDirectory((Join-Path $ProjectRoot 'diagnostics'))
 foreach ($entry in $cases.GetEnumerator()) {

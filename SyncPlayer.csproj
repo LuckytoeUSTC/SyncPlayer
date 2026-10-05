@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <Product>SyncPlayer</Product>
     <Description>Local and LAN playback synchronization for PotPlayer.</Description>
     <DebugType>none</DebugType>

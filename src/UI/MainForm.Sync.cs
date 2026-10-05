@@ -89,7 +89,7 @@ sealed partial class MainForm
         if (Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency < suppressNetworkUntil) return;
         foreach (var device in lan.Devices.Where(d => d.Connected && d.CanSend)) {
             var selected = device.Windows.Where(w => remoteOptions.TryGetValue(device.Id + ":" + w.Id, out var option) && option.Included)
-                .Select(w => new RemoteTarget(w.Id, remoteOptions[device.Id + ":" + w.Id].Offset)).ToArray();
+                .Select(w => new RemoteTarget(w.Id, remoteOptions[device.Id + ":" + w.Id].Offset - mainOffset)).ToArray();
             lan.SendControl(device.Id, operation, selected);
         }
     }

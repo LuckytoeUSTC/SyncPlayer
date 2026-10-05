@@ -53,9 +53,9 @@ sealed partial class MainForm
         foreach (var player in localPlayers) {
             if (!localSyncSwitch.Checked && player.Handle != primary) continue;
             var options = localOptions[player.Handle]; bool main = player.Handle == primary;
-            var row = grid.Rows[grid.Rows.Add(!main && options.Included, player.ToString(), main ? "—" : FormatOffset(options.Offset), actualMute.GetValueOrDefault(player.Handle), main ? Localization.T("主窗口") : options.Included ? Localization.T("跟随") : "")];
+            var row = grid.Rows[grid.Rows.Add(!main && options.Included, player.ToString(), FormatOffset(options.Offset), actualMute.GetValueOrDefault(player.Handle), main ? Localization.T("主窗口") : options.Included ? Localization.T("跟随") : "")];
             row.Tag = new WindowRow(player.Handle, "", player.Handle.ToString("X"), main);
-            row.Cells[0].ReadOnly = main || !localSyncSwitch.Checked; row.Cells[2].ReadOnly = main;
+            row.Cells[0].ReadOnly = main || !localSyncSwitch.Checked;
             row.Cells[1].ToolTipText = player.ToString();
         }
         var peerList = lan.Devices;
@@ -79,7 +79,7 @@ sealed partial class MainForm
         refreshing = false;
         WrapTitles();
     }
-    static string FormatOffset(int milliseconds) => (milliseconds / 1000m).ToString("0.###", CultureInfo.CurrentCulture);
+    static string FormatOffset(int milliseconds) => (milliseconds / 1000m).ToString("0.0##", CultureInfo.CurrentCulture);
     void WrapTitles()
     {
         if (!grid.Columns.Contains("title")) return;
@@ -116,6 +116,13 @@ sealed partial class MainForm
         bool included = options.Included; int bias = options.Offset; bool? muted = options.Muted;
         if (row.Peer.Length == 0) {
             RunControl(() => {
+                if (row.Primary && column == 2 && masterHandle == row.Handle) {
+                    var source = PotPlayer.Read(masterHandle);
+                    int position = PlaybackTimeline.Position((double)source.Position + bias - appliedMainOffset, 0, source.Duration);
+                    AlignLocal(position: position); appliedMainOffset = bias;
+                    detector.Reset(false); detector.Observe(PotPlayer.Read(masterHandle)); Broadcast(Event(PotPlayer.Read(masterHandle)));
+                    return;
+                }
                 if (column == 3) { PotPlayer.Mute(row.Handle, muted == true); actualMute[row.Handle] = muted == true; }
                 if ((column == 2 || column == 0 && included) && included && masterHandle != 0 && row.Handle != masterHandle) {
                     PotPlayer.Prepare(row.Handle); AlignLocal(); detector.Reset(false); detector.Observe(PotPlayer.Read(masterHandle));
@@ -125,7 +132,7 @@ sealed partial class MainForm
             RunControl(() => {
                 WireEvent? operation = null;
                 if (included && column != 3 && masterHandle != 0) { var sample = PotPlayer.Read(masterHandle); operation = Event(sample); }
-                lan.SendControl(row.Peer, operation, [new(row.Window, bias, column == 3 ? muted : null)]);
+                lan.SendControl(row.Peer, operation, [new(row.Window, bias - mainOffset, column == 3 ? muted : null)]);
             });
         }
     }
@@ -134,9 +141,10 @@ sealed partial class MainForm
         if (refreshing) return;
         nint primary = (master.SelectedItem as PlayerWindow)?.Handle ?? 0;
         var nextTargets = localPlayers.Where(p => localSyncSwitch.Checked && p.Handle != primary && localOptions[p.Handle].Included).Select(p => p.Handle).ToArray();
-        var nextOffsets = nextTargets.ToDictionary(h => h, h => localOptions[h].Offset);
+        int nextMainOffset = localOptions.TryGetValue(primary, out var primaryOptions) ? primaryOptions.Offset : 0;
+        var nextOffsets = nextTargets.ToDictionary(h => h, h => localOptions[h].Offset - nextMainOffset);
         bool linked = localSyncSwitch.Checked;
-        actions.Enqueue(() => { bool changed = masterHandle != primary || !localFollowers.SequenceEqual(nextTargets) || syncing != linked; masterHandle = primary; localFollowers = nextTargets; localOffsets = nextOffsets; syncing = linked; if (changed) detector.Reset(false); needsPrepare |= prepare && changed; });
+        actions.Enqueue(() => { bool changed = masterHandle != primary || !localFollowers.SequenceEqual(nextTargets) || syncing != linked; if (masterHandle != primary) appliedMainOffset = nextMainOffset; masterHandle = primary; mainOffset = nextMainOffset; localFollowers = nextTargets; localOffsets = nextOffsets; syncing = linked; if (changed) detector.Reset(false); needsPrepare |= prepare && changed; });
     }
     void UpdateUi()
     {

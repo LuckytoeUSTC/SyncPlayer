@@ -39,10 +39,10 @@ static class LocalizationRegression
             var editable = grid.Rows.Cast<DataGridViewRow>().FirstOrDefault(r => !r.ReadOnly && !r.Cells[2].ReadOnly);
             if (editable != null) {
                 grid.CurrentCell = editable.Cells[2];
-                if (!grid.BeginEdit(false) || grid.EditingControl is not TextBox editor) throw new Exception("Offset editor unavailable");
-                editor.Text = "invalid";
+                if (!grid.BeginEdit(false) || grid.EditingControl is not OffsetEditor editor) throw new Exception("Offset editor unavailable");
+                editor.RawText = "invalid";
                 form.TestLanguage("zh-Hans");
-                if (Localization.Language != "zh-Hans" || grid.Columns[0].HeaderText != "跟随" || editor.Text != "invalid") throw new Exception("Invalid offset blocked language selection or lost input");
+                if (Localization.Language != "zh-Hans" || grid.Columns[0].HeaderText != "跟随" || editor.RawText != "invalid") throw new Exception("Invalid offset blocked language selection or lost input");
                 grid.CancelEdit();
                 report.Add("PASS invalid offset does not block language selection; unfinished input retained");
             }

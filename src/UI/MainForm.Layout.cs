@@ -60,11 +60,11 @@ sealed partial class MainForm
         direction.Width = Math.Max(160, direction.Items.Cast<object>().Select(i => TextRenderer.MeasureText(i.ToString(), direction.Font).Width + 48).DefaultIfEmpty(160).Max());
         direction.DropDownWidth = direction.Width;
     }
-    static Button Button(string text, Action action)
+    Button Button(string text, Action action)
     {
         var button = new Button { Text = text, AutoSize = true, FlatStyle = FlatStyle.Flat, BackColor = Color.White, Padding = new Padding(8, 3, 8, 3), Margin = new Padding(0, 3, 8, 3) };
         button.FlatAppearance.BorderColor = Color.FromArgb(210, 215, 222);
-        button.Click += (_, _) => { try { action(); } catch (Exception ex) { MessageBox.Show(ex.Message, "SyncPlayer", MessageBoxButtons.OK, MessageBoxIcon.Information); } };
+        button.Click += (_, _) => { try { if (!grid.EndEdit()) return; action(); } catch (Exception ex) { MessageBox.Show(ex.Message, "SyncPlayer", MessageBoxButtons.OK, MessageBoxIcon.Information); } };
         return button;
     }
     void BuildInterface()
@@ -90,6 +90,7 @@ sealed partial class MainForm
         playback.Controls.Add(Button(Localization.T("对齐"), Align)); playback.Controls.Add(details); root.Controls.Add(playback, 0, 4);
         var jump = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, Margin = new Padding(0, 0, 0, 8) };
         jump.Controls.Add(seek); jump.Controls.Add(Label(Localization.T("秒"))); jump.Controls.Add(Button(Localization.T("跳转"), Jump)); root.Controls.Add(jump, 0, 5);
+        seek.CommitRequested += (_, _) => { try { seek.Value = seek.Value; playbackButton.Focus(); } catch (FormatException) { message = Localization.T("请检查输入的秒数"); } };
         root.Controls.Add(status, 0, 6);
         details.ForeColor = Color.FromArgb(90, 98, 110); status.ForeColor = details.ForeColor;
         root.SizeChanged += (_, _) => { details.MaximumSize = new Size(Math.Max(160, root.ClientSize.Width - 40), 0); status.MaximumSize = details.MaximumSize; };
@@ -161,12 +162,12 @@ sealed partial class MainForm
         grid.GridColor = Color.FromArgb(235, 238, 242);
         grid.Columns.Add(new DataGridViewCheckBoxColumn { Name = "included", HeaderText = Localization.T("跟随"), AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells, SortMode = DataGridViewColumnSortMode.NotSortable });
         grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "title", HeaderText = Localization.T("窗口"), ReadOnly = true, AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, MinimumWidth = 180, DefaultCellStyle = new() { WrapMode = DataGridViewTriState.True } });
-        grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "offset", HeaderText = Localization.T("偏移(秒)"), AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells, SortMode = DataGridViewColumnSortMode.NotSortable });
+        grid.Columns.Add(new DataGridViewColumn(new OffsetCell()) { Name = "offset", HeaderText = Localization.T("偏移(秒)"), Width = 180, MinimumWidth = 160, SortMode = DataGridViewColumnSortMode.NotSortable });
         grid.Columns.Add(new DataGridViewCheckBoxColumn { Name = "mute", HeaderText = Localization.T("静音"), AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells, SortMode = DataGridViewColumnSortMode.NotSortable });
         grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "state", HeaderText = Localization.T("状态"), ReadOnly = true, AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells, SortMode = DataGridViewColumnSortMode.NotSortable });
         grid.CurrentCellDirtyStateChanged += (_, _) => { if (grid.IsCurrentCellDirty && grid.CurrentCell is DataGridViewCheckBoxCell) grid.CommitEdit(DataGridViewDataErrorContexts.Commit); };
         grid.CellValidating += (_, e) => {
-            if (refreshing || e.ColumnIndex != 2 || grid.Rows[e.RowIndex].Tag is not WindowRow) return;
+            if (refreshing || e.ColumnIndex != 2 || grid.Rows[e.RowIndex].Tag is not WindowRow || grid.Rows[e.RowIndex].Cells[e.ColumnIndex].ReadOnly) return;
             if (!TryOffset(e.FormattedValue?.ToString(), out int parsed)) { e.Cancel = true; grid.Rows[e.RowIndex].Cells[e.ColumnIndex].ErrorText = Localization.T("请输入 -86400 到 86400 的秒数"); }
             else grid.Rows[e.RowIndex].Cells[e.ColumnIndex].ErrorText = "";
         };

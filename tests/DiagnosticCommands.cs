@@ -7,6 +7,7 @@ static class DiagnosticCommands
 {
     public static bool TryRun(string[] args)
     {
+        if (args.Contains("--offset-test")) { ApplicationConfiguration.Initialize(); OffsetRegression.Run(); return true; }
         if (args.Contains("--boundary-test")) { ApplicationConfiguration.Initialize(); BoundaryRegression.Run(); return true; }
         if (args.Contains("--language-test")) { ApplicationConfiguration.Initialize(); LocalizationRegression.Run(); return true; }
         if (args.Contains("--lan-test")) { LanRegression.Run(); return true; }
