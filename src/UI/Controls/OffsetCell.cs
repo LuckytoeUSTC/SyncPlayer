@@ -11,7 +11,14 @@ sealed class OffsetCell : DataGridViewTextBoxCell
         ((OffsetEditor)DataGridView!.EditingControl!).RawText = initialFormattedValue?.ToString() ?? "0.0";
     }
     public override void PositionEditingControl(bool setLocation, bool setSize, Rectangle bounds, Rectangle clip, DataGridViewCellStyle style, bool vertical, bool horizontal, bool firstColumn, bool firstRow)
-        => base.PositionEditingControl(setLocation, setSize, TimeInput.FieldBounds(bounds, style.Font ?? DataGridView!.Font), clip, style, vertical, horizontal, firstColumn, firstRow);
+    {
+        // The text-cell implementation adds text padding a second time and clips
+        // this composite editor, particularly in rows with wrapped filenames.
+        var grid = DataGridView!;
+        var field = TimeInput.FieldBounds(bounds, style.Font ?? grid.Font);
+        grid.EditingPanel.Bounds = field;
+        grid.EditingControl!.Bounds = new Rectangle(Point.Empty, field.Size);
+    }
     protected override void Paint(Graphics graphics, Rectangle clip, Rectangle bounds, int rowIndex, DataGridViewElementStates state, object? value, object? formatted, string? error, DataGridViewCellStyle style, DataGridViewAdvancedBorderStyle border, DataGridViewPaintParts parts)
     {
         base.Paint(graphics, clip, bounds, rowIndex, state, value, formatted, error, style, border, parts & ~DataGridViewPaintParts.ContentForeground & ~DataGridViewPaintParts.ErrorIcon);

@@ -81,7 +81,7 @@ sealed partial class MainForm
     void Align() => RunControl(() => {
         long version = input.Version; AlignLocal(); var sample = PotPlayer.Read(masterHandle); detector.Reset(false); detector.Observe(sample);
         if (input.Version != version) detector.Reset(true);
-        Broadcast(Event(sample)); message = Localization.T("已对齐");
+        Broadcast(Event(sample)); message = Localization.T("已同步");
     });
     static WireEvent Event(PlaybackSample sample) => new() { type = "event", cur = sample.Position, total = sample.Duration, state = sample.State, speed = sample.Speed };
     void Broadcast(WireEvent operation)

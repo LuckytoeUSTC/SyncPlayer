@@ -53,7 +53,9 @@ static class Localization
 开始播放|Play|開始播放
 暂停|Pause|暫停
 停止|Stopped|停止
-对齐|Align|對齊
+同步|Sync|同步
+取消偏移|Reset offsets|取消偏移
+已取消偏移|Offsets reset|已取消偏移
 跳转|Seek|跳轉
 秒|s|秒
 本机名称|Device name|本機名稱
@@ -93,11 +95,11 @@ static class Localization
 控制本机|control this device|控制本機
 由本机控制|be controlled by this device|由本機控制
 双向控制|control both ways|雙向控制
-未找到说明书|Manual not found|找不到說明書
+未找到使用说明|Usage guide not found|找不到使用說明
 操作未完成，请检查窗口或连接|Operation failed. Check the window or connection.|操作未完成，請檢查視窗或連線
 请选择主窗口|Select a main window|請選擇主視窗
 已跳转|Seek complete|已跳轉
-已对齐|Aligned|已對齊
+已同步|Synced|已同步
 已接收 · {0}|Received · {0}|已接收 · {0}
 打开视频后选择主窗口|Open a video and select the main window|開啟影片後選擇主視窗
 窗口未响应，请刷新或重新选择|Window not responding. Refresh or select it again.|視窗沒有回應，請重新整理或重新選擇
@@ -120,11 +122,11 @@ static class Localization
 跳转未响应|Seek did not respond|跳轉沒有回應
 播放器未能精确定位|PlayerWindow could not seek accurately|播放器無法精確定位
 主窗口尚未加载视频|Main window has no video loaded|主視窗尚未載入影片
-播放器未能暂停，对齐已停止|PlayerWindow could not pause. Alignment stopped.|播放器無法暫停，對齊已停止
-跳转未稳定，窗口保持暂停，请重试对齐|Seek did not settle. Windows remain paused; retry Align.|跳轉未穩定，視窗保持暫停，請重試對齊
+播放器未能暂停，同步已停止|PlayerWindow could not pause. Synchronization stopped.|播放器無法暫停，同步已停止
+跳转未稳定，窗口保持暂停，请重试同步|Seek did not settle. Windows remain paused; retry Sync.|跳轉未穩定，視窗保持暫停，請重試同步
 需要两个播放器|Two player windows are required|需要兩個播放器
-对齐后状态不一致|Playback states differ after alignment|對齊後狀態不一致
-连续对齐或重复状态命令改变了播放状态|Repeated alignment or state commands changed playback state|連續對齊或重複狀態指令改變了播放狀態
+同步后状态不一致|Playback states differ after alignment|同步後狀態不一致
+连续同步或重复状态命令改变了播放状态|Repeated alignment or state commands changed playback state|連續同步或重複狀態指令改變了播放狀態
 SyncPlayer 错误|SyncPlayer error|SyncPlayer 錯誤
 窗口 {0} 未响应或已关闭|Window {0} is closed or not responding|視窗 {0} 沒有回應或已關閉
 窗口 {0} 命令未确认|Window {0} did not confirm the command|視窗 {0} 指令未確認

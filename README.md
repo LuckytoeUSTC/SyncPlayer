@@ -8,26 +8,29 @@ Synchronize PotPlayer windows on one Windows computer or across your local netwo
 
 ## 0. Quick start
 
-English is the default on first launch. Click the top-right gear icon, then select **English / 简体中文 / 繁體中文** to change it immediately. Selection applies immediately and is saved automatically; there are no confirmation buttons. The question-mark icon opens the manual in the selected language.
+English is the default on first launch. Click the top-right gear icon, then select **English / 简体中文 / 繁體中文** to change it immediately. Selection applies immediately and is saved automatically; there are no confirmation buttons. The question-mark icon opens the usage guide in the selected language.
 
 ### 0.0 On one computer
 
 1. Open your videos in separate PotPlayer windows.
-2. Run `SyncPlayer.exe` and select the **Main window**.
-3. Turn **Local sync** on and check **Follow** for the other local windows you want to synchronize.
-4. Play, pause, seek or change speed in the main window. The square playback button switches between a triangle (play) and two bars (pause). Use **Align** to recalibrate when needed.
+2. Double-click `SyncPlayer.exe`.
+3. Select the **Main window** at the top.
+4. **Local sync** below the main-window selector is on by default. Check **Follow** for the other local windows you want to synchronize.
+5. Play, pause, seek or change speed in the main window. Use **Sync** to recalibrate when needed.
 
 Check **Mute** in a window's row to silence only that window. Use **Offset (s)** if the videos have different starting points.
 
 ### 0.1 On two computers
 
-1. Open videos and SyncPlayer on both computers, connected to the same local network.
-2. On both computers, turn **Remote connections** on. On the controlling computer, select the other computer, choose **Control peer**, then **Connect**.
-3. On the other computer, approve the request with **Accept**.
-4. On the controlling computer, check **Follow** for the desired windows under the other device's name.
-5. Operate the controlling computer's main window. For remote synchronization only, turn **Local sync** off.
+1. Connect both computers to the same local network and open their videos in PotPlayer.
+2. Double-click `SyncPlayer.exe` on each computer.
+3. Select each computer's **Main window** at the top.
+4. On both computers, turn on the **Remote connections** switch below the main-window selector. This automatically turns **Local sync** off. If you also want local followers, turn **Local sync** back on manually.
+5. On the controlling computer, select the other computer, choose **Control peer**, then **Connect**.
+6. On the other computer, approve the request with **Accept**.
+7. On the controlling computer, check **Follow** for the desired windows under the other device's name, then operate the controlling computer's main window.
 
-**If discovery finds nothing:** on the other computer, turn **Remote connections** on and choose **Copy address**. Paste that address into **Peer address** on the controlling computer, then use the same **Connect** button. You do not need to look up an IP address or configure a port.
+**If discovery finds nothing:** on the other computer, choose **Copy address**. Paste that address into **Peer address** on the controlling computer, then use the same **Connect** button. If several local addresses appear, they are not necessarily all reachable from the other computer. Try the first one initially; if it fails, choose another address on the shared network and copy it again. You do not need to look up an IP address or configure a port.
 
 ## 1. The window table
 
@@ -43,8 +46,7 @@ Local windows appear first, followed by remote windows grouped by device. The ma
 
 Long filenames wrap; hover to read the full name. The list refreshes automatically after opening, closing or changing videos. The square circular-arrow icon also refreshes it manually. Newly discovered local windows start unchecked.
 
-Offset means **this window's position = main window's position + this window's offset − main window's offset**. If the same scene appears at 10 seconds in the main video and 12 seconds in another, enter `2` for the other window. An offset of `-2` places it two seconds before the main window. Changing an enabled follower's offset applies alignment. For unchecked windows, the offset is retained for the current session. A follower before its start waits on the first frame; beyond its end it pauses near the last seekable frame, with a roughly 300 ms decoding guard to prevent automatic replay or playlist advancement. It resumes when its offset enters the valid range again, including after a backward seek or offset edit. A paused follower while the source keeps playing is intentional at these boundaries. Leaving an offset blank commits zero.
-
+Offset means **this window's position = main window's position + this window's offset − main window's offset**. If the same scene appears at 10 seconds in the main video and 12 seconds in another, enter `2` for the other window. An offset of `-2` places it two seconds before the main window. Changing an enabled follower's offset synchronizes that window. For unchecked windows, the offset is retained for the current session. A follower before its start waits on the first frame; beyond its end it pauses near the last frame rather than replaying or moving to the next video. It resumes when its offset enters the valid range again, including after a backward seek or offset edit. The main window can keep playing while a follower waits at the start or end. Leaving an offset blank commits zero.
 
 Changing the main window's offset moves that window by the change in offset; other windows retain their positions when the target is within the video's range. Positions are limited to the video boundaries. The left and right arrows in the seek input also adjust by 0.1 seconds.
 Remote offsets and mute can be changed by the side authorized to control the window. Mute changes made in a remote player are reflected after a network update. Follow selections and offsets are not saved across restarts.
@@ -54,30 +56,31 @@ Remote offsets and mute can be changed by the side authorized to control the win
 | Control | Purpose |
 | --- | --- |
 | Triangle / two vertical bars | One square button changes with the main window: a triangle starts playback; two bars pause it. Controls the main window, selected local followers and authorized remote followers. Repeated Pause does not toggle playback. |
-| Align | Align to the main window's current absolute position, speed and playback state, preserving each follower's offset. |
+| Sync | Synchronize with the main window's current absolute position, speed and playback state, preserving each follower's offset. |
+| Reset offsets | To the right of Sync. Sets every main, local and remote window offset to zero, then synchronizes selected followers. Unchecked windows have their stored offsets cleared without moving their playback positions. |
 | Local sync | The switch below the main window enables local followers. Turning it off hides other local windows and stops all commands to them, preserving selections for next time. Remote synchronization is independent. |
 | Seek | Enter seconds measured from the start of the video in the separate seek area, such as `90.5`, then click Seek. |
 
-Left/Right, Ctrl+Left/Right, timeline clicks and X/C speed changes are handled using the player's actual resulting position and speed. SyncPlayer does not assume that every seek shortcut moves the same number of seconds. Operations in a follower do not change the main window.
+Use Left/Right, Ctrl+Left/Right, the timeline, or X/C in the main PotPlayer window as usual; selected followers follow the resulting position and speed. Operating a follower does not change the main window.
 
-Local seeking waits for positioning before resuming playback. Brief speed adjustments during that operation compensate for decoder startup differences. Normal playback does not use periodic corrective seeks. Speed changes are propagated directly; a brief follower-only rate adjustment can remove the resulting timing difference without seeking. The local target is approximately 100 ms, depending on decoding and computer load.
+Local videos may briefly pause while a seek completes, then resume together. Decoding and computer load can affect how closely the pictures match. If you notice a difference, click Sync.
 
-When first preparing synchronization, SyncPlayer checks accurate seeking and temporarily disables keyframe-only seeking if necessary. It restores options it changed on normal exit. Preparation may briefly change the picture before restoring and aligning it. Forcefully terminating the process may prevent restoration.
+The first synchronization may briefly change the picture while the players are prepared. Exit SyncPlayer normally so it can restore player options it temporarily changed.
 
 ## 3. Connecting devices
 
-**Remote connections** is beside Local sync. Turning it on opens the connection area; turning it off disconnects peers, stops remote control and hides remote rows. Both computers must turn it on before connecting. By default only Local sync is on.
+**Remote connections** is the switch below the main-window selector, beside Local sync. Turning it on opens the connection area and automatically turns Local sync off. Turning it off disconnects peers, stops remote control, hides remote rows and turns Local sync on. These automatic changes happen only when the Remote connections switch changes; you can turn Local sync on manually while Remote connections remains on. Both computers must enable Remote connections before connecting. By default only Local sync is on.
 
-- **Device name:** edit it and press Enter or leave the field to save. The default looks like `PC-7K3M2Q`, derived from the computer's identity and normally different on each computer. Custom names are saved for the current user. Duplicate names receive a four-character suffix. Connections use internal identities, so duplicate names do not select the wrong device.
-- **Local address:** SyncPlayer obtains IP addresses and assigns its port automatically. Copy address copies the full selected address. Multiple network adapters produce multiple addresses; connections with a gateway are listed first.
+- **Device name:** edit it and press Enter or leave the field to save. The default looks like `PC-7K3M2Q`, derived from the computer's identity and normally different on each computer. Custom names are saved for the current user. Duplicate names receive a four-character suffix. Use that suffix to distinguish devices with the same name.
+- **Local address:** SyncPlayer obtains IP addresses and assigns its port automatically. Copy address copies the full selected address. Multiple network adapters can produce multiple addresses; they are not necessarily all reachable from the other computer. Try the first initially, then another address on the shared network if needed. Addresses with a gateway are listed first. The list updates automatically when the network changes and is checked every two seconds. The IP can change after switching networks or router reassignment; the port can change after restarting SyncPlayer. Copy the currently displayed full address.
 - **Devices:** automatically finds SyncPlayer on the local network. Each list entry shows its own round-trip latency once connected. Select a device, then Connect. Multiple devices can stay connected simultaneously; selecting another does not disconnect previous peers. Disconnect affects only the selected peer.
 - **Peer address:** paste the other program's full address here if discovery fails.
 - **Connect, Disconnect:** request a connection or end the selected connection. Discovery does not automatically grant control.
 
 | Direction | After approval |
 | --- | --- |
-| Control peer | Select the peer's windows; your main window sends operations. |
-| Peer controls me | The peer selects your windows; its main window sends operations. |
+| Control peer | Select the peer's windows; operate your main window to control them. |
+| Peer controls me | The peer selects your windows; its main window controls them. |
 | Both ways | Either side can select and control the other's windows. Prefer operating one side at a time to avoid conflicting actions. |
 
 The receiving side sees the device name and requested direction and chooses Accept or Reject. Acceptance authorizes control in that direction. Commands are ignored before approval, after rejection and after disconnection. Changing direction requires a new connection request and approval.
@@ -86,7 +89,7 @@ For remote-only synchronization, turn Local sync off. You can select multiple re
 
 Network changes automatically refresh addresses and discovery. Restarting the program assigns a new port and does not restore control authorization automatically. Copy the current address and reconnect when needed. Interrupted connections show their status. Previously selected remote windows may remain selected after reconnecting; review your selection.
 
-The group row's **ms** value is network round-trip time. It indicates connection responsiveness, not the actual picture difference or an exact one-way delay. Remote synchronization uses operation events and absolute positions. It does not promise the local 100 ms target: network travel, decoding and the two computers' performance affect visual alignment.
+The device's **ms** value shows how quickly the network responds; it is not the difference between the video pictures. Remote playback may differ by more than 0.1 seconds. Network conditions, video decoding and computer load affect the result, so SyncPlayer cannot always keep remote pictures within 0.1 seconds. If they drift apart, click Sync; a wired connection and lower computer load may help.
 
 ## 4. Troubleshooting
 
@@ -105,27 +108,18 @@ The group row's **ms** value is network round-trip time. It indicates connection
 
 SyncPlayer does not transmit video files. Prepare the videos on each computer first. Discovery over the public internet is outside the current feature's scope.
 
-## 5. Building and validation
+## 5. Installing and updating
 
-The release ZIP contains a self-contained Windows x64 EXE and the three manuals. Keep the manuals beside the EXE. On first launch the interface is English, Local sync is on, and Remote connections is off. Existing language and device-name preferences are retained in the current Windows user's settings.
+Download the latest Windows x64 ZIP, extract it, and keep the EXE, the three usage guides, LICENSE and NOTICE.md together. PotPlayer is installed separately; place the required videos on each computer. SyncPlayer does not send videos to other computers.
 
-Building from source requires the .NET 10 SDK. Run `powershell -ExecutionPolicy Bypass -File scripts/build.ps1`. `Start.cmd` launches the local build or the packaged EXE. `scripts/package.ps1` produces the self-contained ZIP and its SHA-256 checksum in `artifacts`. Microsoft runtime files are downloaded from the official NuGet feed when needed.
+To update, close SyncPlayer, extract the new ZIP into a new folder, and launch its `SyncPlayer.exe`. Your language and device name are retained. Review the main window, followers and offsets after reopening; follower selections, offsets and remote connections are not retained across restarts.
 
-| Folder | Responsibility |
-| --- | --- |
-| `src/UI` | Window layout, table, settings and synchronization orchestration. |
-| `src/Playback` | PotPlayer interop, seek detection, rate adjustment and offset boundaries. |
-| `src/Network` | LAN discovery, approval, multiple connections, latency and protocol. |
-| `src/Configuration` | Language, device identity and saved preferences. |
-| `tests` | Diagnostics and regression checks, excluded from the release EXE. |
-| `scripts` | Build, test and package entry points. |
+## 6. Development and acknowledgements
 
-`scripts/test.ps1` runs protocol, discovery and language checks. Add `-Video` to operate two real PotPlayer windows, using local videos in `test-video`; add `-Screenshots` for UI previews. Reports go to `diagnostics`. Tests attempt to restore the players' original position, state, speed and mute afterward. These scripts require the SDK and a diagnostics build; release EXEs do not contain test commands.
+OpenAI Codex participated in implementation, refactoring, interface changes, debugging, test and packaging scripts, and writing these usage guides. The human developer (LuckytoeUSTC) supplied requirements, made product and interaction decisions, reviewed visible behavior, and provided feedback and release authorization.
 
-Real local videos have tested playback/pause, absolute and backward seeks, repeated alignment, speed changes without periodic seeks, mute, blank offsets, start/end holds and automatic re-entry. Position differences use player readings, not frame-by-frame image comparison. Physical key activation was restricted in the development environment, so those checks used PotPlayer's key interface and absolute seeking.
+[PotSync](https://github.com/Byaidu/PotSync) informed the player-control interface and event format; its message identifiers and event field names are reused in a C# reimplementation. [BiuBiuClick](https://github.com/huhai463127310/BiuBiuClick) informed multi-window interaction and Windows control techniques; its classes and image-matching code are not included. PotSync also credits [PotPlayerControl](https://github.com/ld3l/PotPlayerControl) for interface information. See [source acknowledgements](NOTICE.md) for the specific files and reuse scope.
 
-Three services on one computer tested simultaneous connections, per-device latency, independent control and disconnect, approval/rejection, manual connection and port conflicts. Discovery used a real local network adapter. Adapter priority, no-network data and address changes used simulated adapter data. Two physical computers, real adapter removal, router isolation and firewall prompts remain untested.
+## 7. License
 
-## 6. AI contribution
-
-OpenAI Codex participated in implementation, refactoring, interface changes, debugging, test and packaging scripts, and writing these manuals. A human supplied requirements, reviewed visible behavior and provided feedback and release authorization. The validation above distinguishes actual tests from simulated or untested scenarios.
+SyncPlayer source code and usage guides are available under the [MIT License](LICENSE). PotPlayer is a separate product and is not included in the package.

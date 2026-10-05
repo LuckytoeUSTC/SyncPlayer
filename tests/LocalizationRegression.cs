@@ -35,6 +35,19 @@ static class LocalizationRegression
             linked.Checked = true;
             if (controls.OfType<IconButton>().Count() != 4 || controls.OfType<IconButton>().Any(b => b.Width != b.Height || b.Text.Length != 0)) throw new Exception("Icon button layout");
             report.Add("PASS default switches, local-off hides followers, four square icon-only buttons");
+            remoteSwitch.Checked = true;
+            if (linked.Checked) throw new Exception("Remote on did not disable local sync");
+            linked.Checked = true;
+            remoteSwitch.Checked = true;
+            form.TestLanguage("zh-Hans");
+            if (!linked.Checked || !remoteSwitch.Checked) throw new Exception("Manual combined sync was overwritten without a remote change");
+            remoteSwitch.Checked = false;
+            if (!linked.Checked) throw new Exception("Remote off did not enable local sync");
+            linked.Checked = false;
+            remoteSwitch.Checked = true;
+            remoteSwitch.Checked = false;
+            if (!linked.Checked) throw new Exception("Remote off did not restore local sync from an off state");
+            report.Add("PASS remote changes configure local sync once; manual combined sync survives unchanged remote state and language changes");
             form.Show();
             var editable = grid.Rows.Cast<DataGridViewRow>().FirstOrDefault(r => !r.ReadOnly && !r.Cells[2].ReadOnly);
             if (editable != null) {

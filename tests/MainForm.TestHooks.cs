@@ -30,6 +30,8 @@ sealed partial class MainForm
     public void TestLocalSync(bool value) { localSyncSwitch.Checked = value; TestWaitIdle(); }
     public void TestRemoteConnection(bool value) { ShowConnections(value); TestWaitIdle(); }
     public void TestRemoteFollower(string peer, string window) { remoteOptions[peer + ":" + window] = new() { Included = true }; }
+    public void TestRemoteOffset(string peer, string window, int offset) => remoteOptions[peer + ":" + window].Offset = offset;
+    public int TestRemoteOffsetValue(string peer, string window) => remoteOptions[peer + ":" + window].Offset;
     public void SaveUi(string path, int mode)
     {
         ShowConnections(mode == 1); UpdateUi(); PerformLayout();

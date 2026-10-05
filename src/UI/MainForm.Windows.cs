@@ -146,6 +146,29 @@ sealed partial class MainForm
         bool linked = localSyncSwitch.Checked;
         actions.Enqueue(() => { bool changed = masterHandle != primary || !localFollowers.SequenceEqual(nextTargets) || syncing != linked; if (masterHandle != primary) appliedMainOffset = nextMainOffset; masterHandle = primary; mainOffset = nextMainOffset; localFollowers = nextTargets; localOffsets = nextOffsets; syncing = linked; if (changed) detector.Reset(false); needsPrepare |= prepare && changed; });
     }
+    void ResetOffsets()
+    {
+        grid.CancelEdit();
+        foreach (var option in localOptions.Values) option.Offset = 0;
+        foreach (var option in remoteOptions.Values) option.Offset = 0;
+        var remoteTargets = remoteOptions.Keys.Select(key => {
+            int separator = key.IndexOf(':');
+            return (Peer: key[..separator], Window: key[(separator + 1)..]);
+        }).GroupBy(target => target.Peer).ToArray();
+        RebuildRows(); UpdateBinding(false);
+        RunControl(() => {
+            // Reset the baseline without seeking the source back by its old bias.
+            appliedMainOffset = 0;
+            foreach (var device in remoteTargets)
+                lan.SendControl(device.Key, null, device.Select(target => new RemoteTarget(target.Window, 0)).ToArray());
+            if (masterHandle != 0) {
+                AlignLocal();
+                var source = PotPlayer.Read(masterHandle);
+                detector.Reset(false); detector.Observe(source); Broadcast(Event(source));
+            }
+            message = Localization.T("已取消偏移");
+        });
+    }
     void UpdateUi()
     {
         if (IsDisposed) return;

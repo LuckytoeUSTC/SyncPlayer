@@ -129,7 +129,7 @@ static class PotPlayer
         // Every window receives the same ordered sequence; explicit state setters
         // are idempotent, unlike play/pause toggle commands.
         Parallel.ForEach(windows, h => State(h, 1));
-        WaitFor(() => windows.All(h => Read(h, 20486) == 1), Localization.T("播放器未能暂停，对齐已停止"));
+        WaitFor(() => windows.All(h => Read(h, 20486) == 1), Localization.T("播放器未能暂停，同步已停止"));
         Thread.Sleep(180);
         int position = desiredPosition ?? Read(master, 20484) - masterOffset;
         if (desiredPosition.HasValue && !externalSource) position = PlaybackTimeline.Position(position, 0, durations[master]);
@@ -149,7 +149,7 @@ static class PotPlayer
                 && positions.All(p => last.TryGetValue(p.Key, out int old) && old == p.Value);
             last = positions; stable = ready ? stable + 1 : 0;
             return stable >= 3;
-        }, Localization.T("跳转未稳定，窗口保持暂停，请重试对齐"));
+        }, Localization.T("跳转未稳定，窗口保持暂停，请重试同步"));
         Together(windows, h => State(h, PlaybackTimeline.State(position, Offset(h), durations[h], desiredState ?? snapshot.State)));
         if ((desiredState ?? snapshot.State) == 2 && windows.Length > 1) {
             var sides = windows.Where(h => h != master).ToDictionary(h => h, h => PlaybackTimeline.Boundary(position, Offset(h), durations[h]));
@@ -210,10 +210,14 @@ static class PotPlayer
             double gap = Gap(source, follower);
             if (Math.Abs(gap) <= 75 || Math.Abs(gap) > 1000) continue;
             // One correction per speed change, using only the follower's rate.
-            Speed(h, Math.Max(200, speed * (gap > 0 ? 9 : 11) / 10));
+            int correctionSpeed = Math.Max(200, speed * (gap > 0 ? 9 : 11) / 10);
+            double correctionRate = Math.Abs(correctionSpeed - speed);
+            if (correctionRate == 0) continue;
+            int correctionTime = (int)Math.Clamp((Math.Abs(gap) - 25) / correctionRate * 1000 + 300, 400, 5000);
+            Speed(h, correctionSpeed);
             try {
                 var watch = Stopwatch.StartNew();
-                while (watch.ElapsedMilliseconds < 1600) {
+                while (watch.ElapsedMilliseconds < correctionTime) {
                     Thread.Sleep(30); source = Read(master); follower = Read(h);
                     double current = Gap(source, follower);
                     if (source.State != 2 || source.Speed != speed || Math.Abs(current) > 1000 || PlaybackTimeline.Boundary(source.Position, offset, follower.Duration) != 0 || (gap > 0 ? current <= 25 : current >= -25)) break;

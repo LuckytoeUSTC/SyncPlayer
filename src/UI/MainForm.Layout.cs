@@ -60,11 +60,11 @@ sealed partial class MainForm
         direction.Width = Math.Max(160, direction.Items.Cast<object>().Select(i => TextRenderer.MeasureText(i.ToString(), direction.Font).Width + 48).DefaultIfEmpty(160).Max());
         direction.DropDownWidth = direction.Width;
     }
-    Button Button(string text, Action action)
+    Button Button(string text, Action action, bool discardEdit = false)
     {
         var button = new Button { Text = text, AutoSize = true, FlatStyle = FlatStyle.Flat, BackColor = Color.White, Padding = new Padding(8, 3, 8, 3), Margin = new Padding(0, 3, 8, 3) };
         button.FlatAppearance.BorderColor = Color.FromArgb(210, 215, 222);
-        button.Click += (_, _) => { try { if (!grid.EndEdit()) return; action(); } catch (Exception ex) { MessageBox.Show(ex.Message, "SyncPlayer", MessageBoxButtons.OK, MessageBoxIcon.Information); } };
+        button.Click += (_, _) => { try { if (discardEdit) grid.CancelEdit(); else if (!grid.EndEdit()) return; action(); } catch (Exception ex) { MessageBox.Show(ex.Message, "SyncPlayer", MessageBoxButtons.OK, MessageBoxIcon.Information); } };
         return button;
     }
     void BuildInterface()
@@ -87,7 +87,9 @@ sealed partial class MainForm
         BuildGrid(); root.Controls.Add(grid, 0, 3);
         var playback = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, Margin = new Padding(0, 10, 0, 6) };
         playbackButton.Click += (_, _) => Command((requestedPlaybackState >= 0 ? requestedPlaybackState : playbackState) == 2 ? 1 : 2); playback.Controls.Add(playbackButton);
-        playback.Controls.Add(Button(Localization.T("对齐"), Align)); playback.Controls.Add(details); root.Controls.Add(playback, 0, 4);
+        playback.Controls.Add(Button(Localization.T("同步"), Align));
+        playback.Controls.Add(Button(Localization.T("取消偏移"), ResetOffsets, discardEdit: true));
+        playback.Controls.Add(details); root.Controls.Add(playback, 0, 4);
         var jump = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, Margin = new Padding(0, 0, 0, 8) };
         jump.Controls.Add(seek); jump.Controls.Add(Label(Localization.T("秒"))); jump.Controls.Add(Button(Localization.T("跳转"), Jump)); root.Controls.Add(jump, 0, 5);
         seek.CommitRequested += (_, _) => { try { seek.Value = seek.Value; playbackButton.Focus(); } catch (FormatException) { message = Localization.T("请检查输入的秒数"); } };
@@ -99,6 +101,7 @@ sealed partial class MainForm
         localSyncSwitch.CheckedChanged += (_, _) => { if (!grid.EndEdit()) grid.CancelEdit(); RebuildRows(); UpdateBinding(); };
         remoteConnectionSwitch.CheckedChanged += (_, _) => {
             if (!grid.EndEdit()) grid.CancelEdit();
+            localSyncSwitch.Checked = !remoteConnectionSwitch.Checked;
             lan.SetEnabled(remoteConnectionSwitch.Checked);
             if (remoteConnectionSwitch.Checked) lan.Start();
             SetConnectionPanelVisible(remoteConnectionSwitch.Checked); RebuildRows();
@@ -206,7 +209,7 @@ sealed partial class MainForm
         playbackButton.AccessibleName = Localization.T(state == 2 ? "暂停" : "开始播放");
         tooltips.SetToolTip(playbackButton, playbackButton.AccessibleName); playbackButton.Invalidate();
     }
-    static string FindDocumentation() => new[] { AppContext.BaseDirectory, Environment.CurrentDirectory, Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..")) }.Select(p => Path.Combine(p, Localization.Manual)).FirstOrDefault(File.Exists) ?? throw new FileNotFoundException(Localization.T("未找到说明书"));
+    static string FindDocumentation() => new[] { AppContext.BaseDirectory, Environment.CurrentDirectory, Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..")) }.Select(p => Path.Combine(p, Localization.Manual)).FirstOrDefault(File.Exists) ?? throw new FileNotFoundException(Localization.T("未找到使用说明"));
     void ChangeLanguage(string language, bool save = true)
     {
         bool editCommitted = !grid.IsCurrentCellInEditMode || grid.EndEdit();

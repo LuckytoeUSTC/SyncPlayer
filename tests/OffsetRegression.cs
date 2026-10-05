@@ -34,6 +34,28 @@ static class OffsetRegression
             Check(form.TestOffsetValue(a) == 200, "focus-loss commits the actual offset value");
             form.TestOffsetText(a, ""); Pump();
             Check(form.TestOffsetValue(a) == 0 && Math.Abs(PotPlayer.Read(a, 20484) - 60000) <= 100, "blank primary offset resets to zero without cumulative drift");
+            var follower = grid.Rows.Cast<DataGridViewRow>().Single(r => !r.ReadOnly && r != row);
+            grid.CurrentCell = follower.Cells[2]; grid.BeginEdit(false);
+            editor = (OffsetEditor)grid.EditingControl!;
+            editor.RawText = "0.7"; Application.DoEvents();
+            var expected = TimeInput.FieldBounds(grid.GetCellDisplayRectangle(2, follower.Index, false), grid.Font);
+            Check(grid.EditingPanel.Bounds == expected && editor.Height == expected.Height && editor.Controls.Cast<Control>().All(c => c.Top >= 0 && c.Bottom <= editor.ClientSize.Height), "focused composite offset editor fits wrapped row without clipping");
+            using (var bitmap = new Bitmap(form.Width, form.Height)) { form.DrawToBitmap(bitmap, new Rectangle(Point.Empty, form.Size)); bitmap.Save("diagnostics/offset-focused.png"); }
+            editor.Submit(); Pump();
+            form.TestOffsetText(a, "0.3"); Pump();
+            form.TestRemoteFollower("offline-peer", "offline-window");
+            form.TestRemoteOffset("offline-peer", "offline-window", 700);
+            int sourceBeforeReset = PotPlayer.Read(a, 20484);
+            var reset = Descendants(form).OfType<Button>().Single(c => c.Text == Localization.T("取消偏移"));
+            reset.PerformClick(); Pump();
+            Check(form.TestOffsetValue(a) == 0 && form.TestOffsetValue(b) == 0 && form.TestRemoteOffsetValue("offline-peer", "offline-window") == 0, "reset clears primary, follower and hidden remote offsets");
+            bool resetSynced = false; var settle = Stopwatch.StartNew();
+            while (settle.ElapsedMilliseconds < 1500 && !resetSynced) {
+                try { int first = PotPlayer.Read(a, 20484), second = PotPlayer.Read(b, 20484); resetSynced = Math.Abs(first - sourceBeforeReset) <= 100 && Math.Abs(first - second) <= 100; } catch (IOException) { }
+                if (!resetSynced) { Application.DoEvents(); Thread.Sleep(20); }
+            }
+            Check(resetSynced, "reset synchronizes without moving the source back");
+            row = grid.Rows.Cast<DataGridViewRow>().Single(r => r.Cells[4].Value?.ToString() == Localization.T("主窗口")); primary = row.Cells[2];
             var input = controls.OfType<TimeInput>().First(c => c is not OffsetEditor);
             input.Value = 0; input.Step(1); Check(input.Value == .1m, "seek arrow increment is 0.1s");
             input.Step(-1); Check(input.Value == 0, "seek arrow decrements by 0.1s and clamps at start");
