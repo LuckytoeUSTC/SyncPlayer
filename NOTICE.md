@@ -31,3 +31,7 @@ PotSync credits this project for the PotPlayer control interface. SyncPlayer ack
 The self-contained Windows executable includes Microsoft .NET and Windows Forms runtime components. These retain their upstream terms; SyncPlayer's MIT license does not replace third-party license notices. Runtime source and license information: https://github.com/dotnet/runtime and https://github.com/dotnet/winforms.
 
 PotPlayer is installed separately and is not included in the release.
+
+## Optional reference videos
+
+The with-videos package contains two user-provided reference MP4 files for trying synchronization. These media files are not part of the SyncPlayer source or covered by its MIT license. The standard package contains no reference media.

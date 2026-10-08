@@ -110,6 +110,8 @@ SyncPlayer does not transmit video files. Prepare the videos on each computer fi
 
 ## 5. Installing and updating
 
+Two ZIP downloads are available: the standard package contains no videos; the with-videos package includes two reference videos in test-video. Open both files in separate PotPlayer windows to try local synchronization. The videos are separate files, not embedded in the EXE, and are not covered by the SyncPlayer MIT license.
+
 Download the latest Windows x64 ZIP, extract it, and keep the EXE, the three usage guides, LICENSE and NOTICE.md together. PotPlayer is installed separately; place the required videos on each computer. SyncPlayer does not send videos to other computers.
 
 To update, close SyncPlayer, extract the new ZIP into a new folder, and launch its `SyncPlayer.exe`. Your language and device name are retained. Review the main window, followers and offsets after reopening; follower selections, offsets and remote connections are not retained across restarts.

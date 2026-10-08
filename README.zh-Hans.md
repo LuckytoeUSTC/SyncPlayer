@@ -108,6 +108,8 @@ SyncPlayer 不传输视频，各电脑提前准备文件。跨地点公网连接
 
 ## 5. 安装与更新
 
+发布页提供两个 ZIP：普通包不含视频，文件名带 with-videos 的包在 test-video 文件夹中附带两份参考视频。分别用两个 PotPlayer 窗口打开它们，即可体验本地同步。视频是独立文件，不编入 EXE，也不属于 SyncPlayer 的 MIT 授权范围。
+
 下载最新版 Windows x64 ZIP 并解压，保留 EXE、三语使用说明、LICENSE 和 NOTICE.md 在同一文件夹。PotPlayer 需单独安装，各台电脑需提前放好视频，SyncPlayer 不会把视频传到其它电脑。
 
 更新时先关闭 SyncPlayer，将新版 ZIP 解压到新文件夹，再双击其中的 `SyncPlayer.exe`。原来的语言和设备名称会保留。重新打开后请检查主窗口、跟随项及偏移；跟随选择、偏移和远程连接不会跨程序重启保留。
