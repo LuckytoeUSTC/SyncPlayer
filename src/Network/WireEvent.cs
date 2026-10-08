@@ -10,3 +10,4 @@ sealed record WireEvent
     public string? id { get; init; }
     public long seq { get; init; }
 }
+

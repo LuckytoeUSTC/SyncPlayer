@@ -73,3 +73,4 @@ sealed class OffsetEditor : TimeInput, IDataGridViewEditingControl
     bool IDataGridViewEditingControl.EditingControlWantsInputKey(Keys key, bool gridWantsKey) => (key & Keys.KeyCode) is Keys.Enter or Keys.Left or Keys.Right or Keys.Up or Keys.Down or Keys.Home or Keys.End || !gridWantsKey;
     void IDataGridViewEditingControl.PrepareEditingControlForEdit(bool selectAll) => FocusEditor(selectAll);
 }
+

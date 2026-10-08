@@ -14,22 +14,26 @@ sealed partial class MainForm : Form
         SelectionMode = DataGridViewSelectionMode.CellSelect, MultiSelect = false,
         EnableHeadersVisualStyles = false, EditMode = DataGridViewEditMode.EditOnEnter
     };
-    readonly ToggleSwitch localSyncSwitch = new() { Text = Localization.T("本地同步"), Checked = true, Width = 240 };
-    readonly ToggleSwitch remoteConnectionSwitch = new() { Text = Localization.T("远程连接"), Checked = false, Width = 280 };
+    readonly RadioButton localSyncSwitch = ModeChoice("本地同步", true);
+    readonly RadioButton remoteConnectionSwitch = ModeChoice("远程同步", false);
     readonly IconButton playbackButton = new();
     readonly ToolTip tooltips = new();
     volatile int playbackState, requestedPlaybackState = -1;
+    volatile int masterDuration;
     long playbackVersion;
     readonly TimeInput seek = new() { Maximum = 864000, Width = 180 };
     readonly Label status = Label(Localization.T("就绪")), details = Label("");
-    readonly ComboBox localAddress = new AlignedComboBox() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 320 };
+    readonly TextBox localAddress = new() { ReadOnly = true, Width = 320, BackColor = Color.White };
     readonly TextBox deviceName = new() { Width = 220 };
-    readonly ListBox devices = new() { Dock = DockStyle.Fill, Height = 112, IntegralHeight = false, DrawMode = DrawMode.OwnerDrawFixed };
-    readonly TextBox manualAddress = new() { Dock = DockStyle.Fill, PlaceholderText = Localization.T("粘贴对方地址") };
-    readonly ComboBox direction = new AlignedComboBox() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 192 };
+    readonly ListBox applicants = new() { Dock = DockStyle.Top, Height = 32, IntegralHeight = false };
+    readonly Label connectedDevice = Label(""), connectedRtt = Label("");
+    TableLayoutPanel? connectedDeviceRow;
+    Button? acceptButton, rejectButton;
+    readonly TextBox manualAddress = new() { Dock = DockStyle.Fill, PlaceholderText = Localization.T("粘贴主控的12位连接码") };
+    Button? requestMasterButton;
+    Button? syncButton, resetOffsetsButton, jumpButton;
     readonly Label connectionStatus = Label("");
-    readonly FlowLayoutPanel incomingBar = new() { AutoSize = true, Dock = DockStyle.Top, Visible = false };
-    readonly Label incomingText = Label("");
+    readonly TableLayoutPanel incomingBar = new() { AutoSize = true, Dock = DockStyle.Top, Visible = false, ColumnCount = 1 };
     readonly Panel connectionPanel = new() { Dock = DockStyle.Top, AutoSize = true, Visible = false };
     readonly System.Windows.Forms.Timer ui = new() { Interval = 200 };
     readonly object gate = new();
@@ -37,7 +41,7 @@ sealed partial class MainForm : Form
     readonly CancellationTokenSource cancel = new();
     readonly PlaybackChangeDetector detector = new();
     readonly NavigationMonitor input;
-    readonly LanService lan;
+    readonly RelayService lan;
     readonly ConcurrentDictionary<nint, WindowOptions> localOptions = new();
     readonly ConcurrentDictionary<string, WindowOptions> remoteOptions = new();
     readonly ConcurrentDictionary<nint, bool> actualMute = new();
@@ -48,16 +52,21 @@ sealed partial class MainForm : Form
     Dictionary<nint, int> localOffsets = new();
     int mainOffset, appliedMainOffset;
     readonly ConcurrentDictionary<nint, int> localBoundary = new();
-    readonly Dictionary<nint, RemoteClock> remoteClocks = new();
+    RemoteClock? remoteClock;
+    string remotePrimarySignature = "";
     sealed class RemoteClock
     {
-        public double Position, At; public int Offset, Duration, Speed = 1000, State = 1, Boundary; public string Peer = "";
+        public double Position, At; public int Offset, Duration, Speed = 1000, State = 1, Boundary; public string Peer = ""; public nint Handle;
         public double Now(double at) => Position + (State == 2 ? (at - At) * Speed : 0);
     }
-    bool syncing = true, needsPrepare = true, refreshing, stopped;
-    string message = Localization.T("就绪"), readings = "", incomingNonce = "", deviceFingerprint = "", windowFingerprint = "";
+    bool needsPrepare = true, refreshing, stopped;
+    bool syncing => syncMode == SyncMode.Local;
+    enum SyncMode { Local, Remote }
+    SyncMode syncMode = SyncMode.Local;
+    bool changingMode;
+    string message = Localization.T("就绪"), readings = "", deviceFingerprint = "", windowFingerprint = "", requestFingerprint = "";
     DateTime lastWindowRefresh = DateTime.MinValue;
-    double suppressNetworkUntil, lastMutePoll;
+    double lastMutePoll;
     long jumpVersion;
     int connectionExtraHeight;
     Font? groupFont;
@@ -65,9 +74,9 @@ sealed partial class MainForm : Form
     sealed class WindowOptions { public bool Included; public int Offset; public bool? Muted; }
     sealed record WindowRow(nint Handle, string Peer, string Window, bool Primary = false);
     sealed record GroupRow(string Peer);
-    sealed record DeviceChoice(DeviceView Device, string Caption) { public override string ToString() => Caption; }
+    sealed record RequestChoice(ConnectionRequest Request) { public override string ToString() => Request.Transfer ? Localization.F("{0} 申请主控（30秒内有效）", Request.Name) : Request.Name; }
 
-    public MainForm(bool connectNetwork = true)
+    public MainForm(bool runEngine = true)
     {
         Text = "SyncPlayer"; ClientSize = new Size(900, 720); MinimumSize = new Size(780, 570);
         AutoScaleMode = AutoScaleMode.Dpi;
@@ -77,13 +86,18 @@ sealed partial class MainForm : Form
         playbackButton.Emphasized = true; playbackButton.BackColor = Color.FromArgb(70, 78, 90);
         playbackButton.FlatAppearance.BorderColor = playbackButton.BackColor;
         input = new NavigationMonitor(() => masterHandle);
-        lan = new LanService(DeviceIdentity.LoadName(), discover: connectNetwork);
+        lan = new RelayService(DeviceIdentity.LoadName());
         lan.SetEnabled(false);
         lan.Controlled += ReceiveRemote;
+        lan.Paired += transferred => actions.Enqueue(() => {
+            remoteClock = null; remotePrimarySignature = ""; SyncRemotePrimary();
+        });
+        lan.WindowsChanged += () => actions.Enqueue(() => {
+            SyncRemotePrimary();
+        });
         lan.Failed += text => message = text;
         BuildInterface();
         RefreshPlayers();
-        if (connectNetwork) lan.Start();
         ui.Tick += (_, _) => UpdateUi(); ui.Start();
         FormClosed += (_, _) => { ui.Stop(); settingsMenu?.Dispose(); StopEngine(); };
         FormClosing += (_, e) => { grid.CancelEdit(); e.Cancel = false; cancel.Cancel(); };
@@ -95,6 +109,6 @@ sealed partial class MainForm : Form
             AlignControlRows();
         };
         DpiChanged += (_, _) => BeginInvoke((Action)(() => { AlignControlRows(); FitHeaders(); WrapTitles(); }));
-        _ = Task.Run(Loop);
+        if (runEngine) _ = Task.Run(Loop);
     }
 }

@@ -1,37 +1,35 @@
-# References and acknowledgements
+# SyncPlayer 参考与版权说明
 
-SyncPlayer is a C# implementation developed with OpenAI Codex assistance. Its own source code is distributed under the MIT License in LICENSE. The following references informed development; their authors do not endorse this project.
+SyncPlayer 项目源码使用 MIT 许可证，版权声明见 `LICENSE`。开发过程中使用了 OpenAI Codex 辅助。以下项目提供了接口或交互设计参考；列出参考来源不表示其作者认可或参与了 SyncPlayer。
 
 ## PotSync — Byaidu
 
-Source: https://github.com/Byaidu/PotSync
+来源：https://github.com/Byaidu/PotSync
 
-The PotPlayer control approach in `potsync.py` was used as a reference when implementing `src/Playback/PotPlayer.cs`: enumerate player windows, query position/duration/state through Windows messages, and send playback/seek commands. The message numbers 1024, 273, 20482, 20484, 20485, 20486 and 20002 are reused as interface identifiers. These are not newly invented SyncPlayer commands.
+参考其 `potsync.py` 中通过 Windows 消息枚举和控制 PotPlayer 的方法，在 C# 中实现窗口查询、播放、暂停与跳转。消息编号作为播放器接口标识使用。同步事件保留 `progress`、`event` 以及 `type`、`cur`、`total`、`state` 等命名。
 
-`src/Network/WireEvent.cs` retains PotSync's `progress`/`event` terminology and `type`, `cur`, `total`, `state` fields, with additional fields. SyncPlayer's discovery, approval and multi-device packet envelope is a separate implementation; protocol similarities do not guarantee interoperability with PotSync.
-
-This is reference-based reimplementation of interface calls and an event model, not inclusion of the Python program or a line-for-line translation of its functions. No PotSync source file is included in the build or release. The reference repository and downloaded copy contained no license file when reviewed on 2026-10-05; this project does not claim to relicense that repository under MIT.
+SyncPlayer 的中转连接、加入审批、主控交换和往返测量为本项目实现，不保证与 PotSync 互通。发布包未包含 PotSync 的 Python 源文件。此前审阅的本地参考副本未包含许可证文件；SyncPlayer 的 MIT 许可证不适用于该参考项目。
 
 ## BiuBiuClick — huhai463127310 / 栩风
 
-Source: https://github.com/huhai463127310/BiuBiuClick
+来源：https://github.com/huhai463127310/BiuBiuClick
 
-Its multi-window control workflow and Windows window-enumeration/input-control approach informed the design. The local source files `WindowHelper.cs`, `KeyController.cs` and `MouseHook.cs` were inspected. SyncPlayer uses its own window listing and navigation observer; those classes, its image-matching implementation, UI assets and assemblies are not included in SyncPlayer. No substantial verbatim implementation from these files was identified in the current C# source review.
+参考其多窗口控制流程，以及 `WindowHelper.cs`、`KeyController.cs`、`MouseHook.cs` 中的窗口枚举和输入观察思路。SyncPlayer 使用自己的实现，未将这些类、图像匹配代码、界面素材或程序集纳入发布包。
 
-BiuBiuClick's reference copy is licensed under MIT, copyright (c) 2021 栩风. The original license text is available at https://github.com/huhai463127310/BiuBiuClick/blob/main/LICENSE.
+本地参考副本使用 MIT 许可证，版权为 Copyright (c) 2021 栩风。原许可证：https://github.com/huhai463127310/BiuBiuClick/blob/main/LICENSE
 
 ## PotPlayerControl — ld3l
 
-Source: https://github.com/ld3l/PotPlayerControl
+来源：https://github.com/ld3l/PotPlayerControl
 
-PotSync credits this project for the PotPlayer control interface. SyncPlayer acknowledges this upstream source of interface information; it does not include the Java library or its source files.
+PotSync 将该项目列为 PotPlayer 控制接口的参考来源，在此保留对上游接口资料的致谢。发布包未包含其 Java 库或源文件。
 
-## Runtime and player
+## 运行库与界面素材
 
-The self-contained Windows executable includes Microsoft .NET and Windows Forms runtime components. These retain their upstream terms; SyncPlayer's MIT license does not replace third-party license notices. Runtime source and license information: https://github.com/dotnet/runtime and https://github.com/dotnet/winforms.
+Windows 独立运行版本包含 Microsoft .NET 和 Windows Forms 运行库。它们保留各自的许可证和第三方条款，见发布包的 `licenses` 文件夹。SyncPlayer 的 MIT 许可证不替代这些条款。
 
-PotPlayer is installed separately and is not included in the release.
+运行库来源：https://github.com/dotnet/runtime 和 https://github.com/dotnet/winforms
 
-## Optional reference videos
+语言按钮图标依据用户提供的参考图，经图像生成工具处理后使用。
 
-The with-videos package contains two user-provided reference MP4 files for trying synchronization. These media files are not part of the SyncPlayer source or covered by its MIT license. The standard package contains no reference media.
+PotPlayer 需由用户另行安装。发布包不包含播放器、测试视频或其他参考媒体。

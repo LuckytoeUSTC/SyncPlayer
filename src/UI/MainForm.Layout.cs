@@ -6,7 +6,13 @@ namespace SyncPlayer;
 
 sealed partial class MainForm
 {
-    static Label Label(string text) => new() { Text = text, AutoSize = true, Margin = new Padding(0, 7, 12, 7) };
+    static Label Label(string text) => new() { Text = Localization.T(text), AutoSize = true, Margin = new Padding(0, 7, 12, 7) };
+    static RadioButton ModeChoice(string text, bool selected) {
+        var choice = new RadioButton { Text = Localization.T(text), Checked = selected, Appearance = Appearance.Button, FlatStyle = FlatStyle.Flat, TextAlign = ContentAlignment.MiddleCenter, Margin = Padding.Empty, Padding = Padding.Empty, AutoCheck = false };
+        choice.FlatAppearance.BorderColor = Color.FromArgb(210, 215, 222);
+        choice.FlatAppearance.CheckedBackColor = Color.FromArgb(224, 230, 238);
+        return choice;
+    }
     IconButton MakeIcon(string symbol, string label, Action action, bool subtle = false)
     {
         var button = new IconButton { Symbol = symbol, Tag = label, AccessibleName = Localization.T(label) };
@@ -22,6 +28,8 @@ sealed partial class MainForm
             foreach (Control child in root.Controls) Walk(child);
         }
         Walk(this);
+        seek.UpdateAccessibleLabels();
+        if (requestMasterButton != null) tooltips.SetToolTip(requestMasterButton, Localization.T("申请主控，需对方接受"));
     }
     void FitHeaders()
     {
@@ -30,9 +38,10 @@ sealed partial class MainForm
     }
     void AlignControlRows()
     {
-        int height = Math.Max(master.PreferredHeight, TextRenderer.MeasureText("Ag", Font).Height + 10);
-        foreach (var combo in new[] { master, localAddress, direction }) combo.ItemHeight = height - 8;
-        height = master.PreferredHeight;
+        int padding = (int)Math.Ceiling(12 * DeviceDpi / 96.0);
+        int height = Math.Max(Font.Height, TextRenderer.MeasureText("Agjpqy", Font).Height) + padding;
+        master.ItemHeight = height - 8;
+        height = Math.Max(height, master.PreferredHeight);
         void Walk(Control root) {
             foreach (Control child in root.Controls) {
                 if (child is Button button) {
@@ -43,13 +52,12 @@ sealed partial class MainForm
                 } else if (child is ComboBox or NumericUpDown or TextBox) {
                     int top = Math.Max(0, (height - child.PreferredSize.Height) / 2);
                     child.Margin = new Padding(0, top, 8, top); child.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-                } else if (child is ToggleSwitch toggle) {
-                    toggle.Height = height;
-                    toggle.Width = TextRenderer.MeasureText(toggle.Text, toggle.Font).Width + 2 * (height - 6) + 28;
-                    toggle.Margin = new Padding(0, 0, 24, 8);
+                } else if (child is RadioButton choice) {
+                    choice.Size = new Size(TextRenderer.MeasureText(choice.Text, choice.Font).Width + 28, height);
+                    choice.Margin = Padding.Empty; choice.BackColor = Color.White;
                 } else if (child is TimeInput) {
                     child.Height = height; child.Margin = new Padding(0, 0, 8, 0);
-                } else if (child is Label label && label != status) {
+                } else if (child is Label label && label != status && label != connectedDevice) {
                     label.Anchor = AnchorStyles.Left;
                     label.Margin = new Padding(0, root is TableLayoutPanel ? 0 : Math.Max(0, (height - label.PreferredHeight) / 2), 12, 0);
                 }
@@ -57,12 +65,10 @@ sealed partial class MainForm
             }
         }
         Walk(this); PerformLayout();
-        direction.Width = Math.Max(160, direction.Items.Cast<object>().Select(i => TextRenderer.MeasureText(i.ToString(), direction.Font).Width + 48).DefaultIfEmpty(160).Max());
-        direction.DropDownWidth = direction.Width;
     }
     Button Button(string text, Action action, bool discardEdit = false)
     {
-        var button = new Button { Text = text, AutoSize = true, FlatStyle = FlatStyle.Flat, BackColor = Color.White, Padding = new Padding(8, 3, 8, 3), Margin = new Padding(0, 3, 8, 3) };
+        var button = new Button { Text = Localization.T(text), AutoSize = true, FlatStyle = FlatStyle.Flat, BackColor = Color.White, Padding = new Padding(8, 3, 8, 3), Margin = new Padding(0, 3, 8, 3) };
         button.FlatAppearance.BorderColor = Color.FromArgb(210, 215, 222);
         button.Click += (_, _) => { try { if (discardEdit) grid.CancelEdit(); else if (!grid.EndEdit()) return; action(); } catch (Exception ex) { MessageBox.Show(ex.Message, "SyncPlayer", MessageBoxButtons.OK, MessageBoxIcon.Information); } };
         return button;
@@ -77,35 +83,31 @@ sealed partial class MainForm
         source.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         for (int i = 2; i < 5; i++) source.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         source.Controls.Add(Label(Localization.T("主窗口")), 0, 0); source.Controls.Add(master, 1, 0);
-        source.Controls.Add(MakeIcon("refresh", "刷新", () => { RefreshPlayers(); lan.RefreshAddresses(); lan.Search(); }), 2, 0);
-        source.Controls.Add(MakeIcon("help", "? 说明", OpenManual, true), 3, 0);
-        source.Controls.Add(MakeIcon("settings", "设置", ShowSettings, true), 4, 0);
+        source.Controls.Add(MakeIcon("refresh", "刷新", RefreshPlayers), 2, 0);
+        source.Controls.Add(MakeIcon("help", "说明", OpenManual, true), 3, 0);
+        source.Controls.Add(MakeIcon("settings", "语言", ShowSettings, true), 4, 0);
         root.Controls.Add(source, 0, 0);
-        var switches = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, WrapContents = false };
+        var switches = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 0, 8) };
         switches.Controls.Add(localSyncSwitch); switches.Controls.Add(remoteConnectionSwitch); root.Controls.Add(switches, 0, 1);
         BuildConnectionPanel(); root.Controls.Add(connectionPanel, 0, 2);
         BuildGrid(); root.Controls.Add(grid, 0, 3);
         var playback = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, Margin = new Padding(0, 10, 0, 6) };
         playbackButton.Click += (_, _) => Command((requestedPlaybackState >= 0 ? requestedPlaybackState : playbackState) == 2 ? 1 : 2); playback.Controls.Add(playbackButton);
-        playback.Controls.Add(Button(Localization.T("同步"), Align));
-        playback.Controls.Add(Button(Localization.T("取消偏移"), ResetOffsets, discardEdit: true));
+        playback.Controls.Add(syncButton = Button(Localization.T("同步"), Align));
+        playback.Controls.Add(resetOffsetsButton = Button(Localization.T("取消偏移"), ResetOffsets, discardEdit: true));
         playback.Controls.Add(details); root.Controls.Add(playback, 0, 4);
         var jump = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, Margin = new Padding(0, 0, 0, 8) };
-        jump.Controls.Add(seek); jump.Controls.Add(Label(Localization.T("秒"))); jump.Controls.Add(Button(Localization.T("跳转"), Jump)); root.Controls.Add(jump, 0, 5);
+        jump.Controls.Add(jumpButton = Button(Localization.T("跳转"), Jump)); jump.Controls.Add(seek); jump.Controls.Add(Label(Localization.T("秒"))); root.Controls.Add(jump, 0, 5);
         seek.CommitRequested += (_, _) => { try { seek.Value = seek.Value; playbackButton.Focus(); } catch (FormatException) { message = Localization.T("请检查输入的秒数"); } };
         root.Controls.Add(status, 0, 6);
         details.ForeColor = Color.FromArgb(90, 98, 110); status.ForeColor = details.ForeColor;
         root.SizeChanged += (_, _) => { details.MaximumSize = new Size(Math.Max(160, root.ClientSize.Width - 40), 0); status.MaximumSize = details.MaximumSize; };
         master.SelectedIndexChanged += (_, _) => { if (!refreshing) { RebuildRows(); UpdateBinding(); } };
         master.DropDown += (_, _) => master.DropDownWidth = Math.Min(Screen.FromControl(this).WorkingArea.Width - 40, Math.Max(master.Width, localPlayers.Select(p => TextRenderer.MeasureText(p.ToString(), master.Font).Width + 32).DefaultIfEmpty().Max()));
-        localSyncSwitch.CheckedChanged += (_, _) => { if (!grid.EndEdit()) grid.CancelEdit(); RebuildRows(); UpdateBinding(); };
-        remoteConnectionSwitch.CheckedChanged += (_, _) => {
-            if (!grid.EndEdit()) grid.CancelEdit();
-            localSyncSwitch.Checked = !remoteConnectionSwitch.Checked;
-            lan.SetEnabled(remoteConnectionSwitch.Checked);
-            if (remoteConnectionSwitch.Checked) lan.Start();
-            SetConnectionPanelVisible(remoteConnectionSwitch.Checked); RebuildRows();
-        };
+        localSyncSwitch.Click += (_, _) => SetSyncMode(SyncMode.Local);
+        remoteConnectionSwitch.Click += (_, _) => SetSyncMode(SyncMode.Remote);
+        localSyncSwitch.CheckedChanged += (_, _) => { if(localSyncSwitch.Checked)SetSyncMode(SyncMode.Local); };
+        remoteConnectionSwitch.CheckedChanged += (_, _) => { if(remoteConnectionSwitch.Checked)SetSyncMode(SyncMode.Remote); };
     }
     void BuildConnectionPanel()
     {
@@ -117,39 +119,21 @@ sealed partial class MainForm
         deviceName.Leave += (_, _) => SaveDeviceName();
         deviceName.KeyDown += (_, e) => { if (e.KeyCode == Keys.Enter) { SaveDeviceName(); e.SuppressKeyPress = true; } };
         var addressRow = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Top };
-        addressRow.Controls.Add(Label(Localization.T("本机地址"))); addressRow.Controls.Add(localAddress);
-        addressRow.Controls.Add(Button(Localization.T("复制地址"), () => { if (localAddress.SelectedItem is string address) Clipboard.SetText(address); else message = Localization.T("当前没有局域网地址"); }));
+        addressRow.Controls.Add(Label("连接码")); addressRow.Controls.Add(localAddress);
+        addressRow.Controls.Add(Button("复制连接码", () => { if (localAddress.TextLength > 0) Clipboard.SetText(localAddress.Text); else message = Localization.T("尚未创建连接码"); }));
         box.Controls.Add(addressRow);
         var destinations = new TableLayoutPanel { AutoSize = true, Dock = DockStyle.Top, ColumnCount = 2 };
-        devices.ItemHeight = Font.Height + 10;
-        devices.DrawItem += (_, e) => {
-            if (e.Index < 0 || devices.Items[e.Index] is not DeviceChoice entry) return;
-            e.DrawBackground();
-            string name = DeviceIdentity.DisplayName(entry.Device, lan.Devices, lan.Name);
-            string latency = entry.Device.Connected ? entry.Device.Rtt.HasValue ? $"{entry.Device.Rtt:0.#} ms" : "—" : "";
-            int latencyWidth = TextRenderer.MeasureText(latency, e.Font).Width + 14;
-            using var dot = new SolidBrush(entry.Device.Connected ? Color.FromArgb(65, 72, 82) : Color.FromArgb(190, 195, 203));
-            e.Graphics.FillEllipse(dot, e.Bounds.Left + 7, e.Bounds.Top + e.Bounds.Height / 2 - 3, 6, 6);
-            var left = new Rectangle(e.Bounds.Left + 23, e.Bounds.Top, Math.Max(1, e.Bounds.Width - latencyWidth - 23), e.Bounds.Height);
-            var right = new Rectangle(e.Bounds.Right - latencyWidth, e.Bounds.Top, latencyWidth - 7, e.Bounds.Height);
-            TextRenderer.DrawText(e.Graphics, name, e.Font, left, e.ForeColor, TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis);
-            TextRenderer.DrawText(e.Graphics, latency, e.Font, right, e.ForeColor, TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.Right);
-            e.DrawFocusRectangle();
-        };
         destinations.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); destinations.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
-        destinations.Controls.Add(Label(Localization.T("设备")), 0, 0); destinations.Controls.Add(devices, 1, 0); destinations.Controls.Add(Label(Localization.T("对方地址")), 0, 1); destinations.Controls.Add(manualAddress, 1, 1);
+        destinations.Controls.Add(Label("主控连接码"), 0, 0); destinations.Controls.Add(manualAddress, 1, 0);
         box.Controls.Add(destinations);
-        direction.Items.AddRange(new object[] { Localization.T("我控制对方"), Localization.T("对方控制我"), Localization.T("双向") }); direction.SelectedIndex = 0;
         var actionsRow = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Top };
-        actionsRow.Controls.Add(direction); actionsRow.Controls.Add(Button(Localization.T("连接"), Connect));
-        actionsRow.Controls.Add(Button(Localization.T("断开"), () => { if (devices.SelectedItem is DeviceChoice selected) lan.Disconnect(selected.Device.Id); }));
+        actionsRow.Controls.Add(Button("发起", () => lan.Create())); actionsRow.Controls.Add(Button("加入", Connect));
+        actionsRow.Controls.Add(Button(Localization.T("断开"), () => { lan.Disconnect(); }));
+        actionsRow.Controls.Add(requestMasterButton = Button("接管", () => lan.RequestMaster())); requestMasterButton.Enabled = false;
         box.Controls.Add(actionsRow); box.Controls.Add(connectionStatus);
-        incomingBar.Controls.Add(incomingText);
-        incomingBar.Controls.Add(Button(Localization.T("接受"), () => { lan.Respond(incomingNonce, true); incomingNonce = ""; }));
-        incomingBar.Controls.Add(Button(Localization.T("拒绝"), () => { lan.Respond(incomingNonce, false); incomingNonce = ""; })); box.Controls.Add(incomingBar);
-        devices.SelectedIndexChanged += (_, _) => { if (!refreshing && devices.SelectedIndex >= 0) manualAddress.Clear(); };
-        manualAddress.TextChanged += (_, _) => { if (!refreshing && manualAddress.TextLength > 0) devices.SelectedIndex = -1; };
+        BuildRequestList(box);
+        UpdateIconLabels();
     }
     void BuildGrid()
     {
@@ -163,7 +147,7 @@ sealed partial class MainForm
         grid.DefaultCellStyle.Padding = new Padding(4, 5, 4, 5);
         grid.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
         grid.GridColor = Color.FromArgb(235, 238, 242);
-        grid.Columns.Add(new DataGridViewCheckBoxColumn { Name = "included", HeaderText = Localization.T("跟随"), AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells, SortMode = DataGridViewColumnSortMode.NotSortable });
+        grid.Columns.Add(new DataGridViewCheckBoxColumn { Name = "included", HeaderText = Localization.WindowSyncCaption, AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells, SortMode = DataGridViewColumnSortMode.NotSortable });
         grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "title", HeaderText = Localization.T("窗口"), ReadOnly = true, AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, MinimumWidth = 180, DefaultCellStyle = new() { WrapMode = DataGridViewTriState.True } });
         grid.Columns.Add(new DataGridViewColumn(new OffsetCell()) { Name = "offset", HeaderText = Localization.T("偏移(秒)"), Width = 180, MinimumWidth = 160, SortMode = DataGridViewColumnSortMode.NotSortable });
         grid.Columns.Add(new DataGridViewCheckBoxColumn { Name = "mute", HeaderText = Localization.T("静音"), AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells, SortMode = DataGridViewColumnSortMode.NotSortable });
@@ -182,7 +166,7 @@ sealed partial class MainForm
             if (e.RowIndex < 0) return;
             string peer = grid.Rows[e.RowIndex].Tag switch { WindowRow row => row.Peer, GroupRow row => row.Peer, _ => "" };
             if (peer.Length == 0) return;
-            ShowConnections(true); devices.SelectedIndex = devices.Items.Cast<DeviceChoice>().ToList().FindIndex(d => d.Device.Id == peer);
+            ShowConnections(true);
         };
         grid.CellPainting += (_, e) => {
             if (e.RowIndex == -1 && e.ColumnIndex >= 0) {
@@ -196,12 +180,7 @@ sealed partial class MainForm
             }
         };
     }
-    string DeviceCaption(DeviceView device, DeviceView[] all)
-    {
-        string name = DeviceIdentity.DisplayName(device, all, lan.Name);
-        string state = Localization.T(device.Status);
-        return name + " · " + state + (device.Connected && device.Rtt.HasValue ? $" · {device.Rtt:0.#} ms" : "");
-    }
+    static string RttCaption(double? rtt) => Localization.T("往返") + " " + (rtt.HasValue ? $"{rtt:0} ms" : "—");
     void UpdatePlaybackIcon()
     {
         int state = requestedPlaybackState >= 0 ? requestedPlaybackState : playbackState;
@@ -213,9 +192,7 @@ sealed partial class MainForm
     void ChangeLanguage(string language, bool save = true)
     {
         bool editCommitted = !grid.IsCurrentCellInEditMode || grid.EndEdit();
-        Localization.Select(language, save); Localization.Apply(this); UpdateIconLabels(); FitHeaders();
-        int selected = direction.SelectedIndex;
-        direction.Items.Clear(); direction.Items.AddRange(new object[] { Localization.T("我控制对方"), Localization.T("对方控制我"), Localization.T("双向") }); direction.SelectedIndex = selected;
+        Localization.Select(language, save); Localization.Apply(this); grid.Columns["included"]!.HeaderText = Localization.WindowSyncCaption; UpdateIconLabels(); FitHeaders();
         AlignControlRows(); deviceFingerprint = ""; if (editCommitted) RebuildRows(); UpdateUi();
     }
     ToolStripDropDownMenu? settingsMenu;
@@ -247,7 +224,7 @@ sealed partial class MainForm
     }
     void ShowConnections(bool visible)
     {
-        if (remoteConnectionSwitch.Checked != visible) remoteConnectionSwitch.Checked = visible;
+        if (remoteConnectionSwitch.Checked != visible) SetSyncMode(visible ? SyncMode.Remote : SyncMode.Local);
         else SetConnectionPanelVisible(visible);
     }
     void SetConnectionPanelVisible(bool visible)

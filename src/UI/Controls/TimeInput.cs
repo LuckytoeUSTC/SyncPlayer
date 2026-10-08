@@ -31,8 +31,9 @@ class TimeInput : UserControl
             if (e.KeyCode is Keys.Up or Keys.Down) { Step(e.KeyCode == Keys.Up ? 1 : -1); e.SuppressKeyPress = true; }
             if (e.KeyCode == Keys.Enter) { CommitRequested?.Invoke(this, EventArgs.Empty); e.SuppressKeyPress = true; }
         };
-        AccessibleName = Localization.T("跳转"); editor.AccessibleName = AccessibleName;
+        UpdateAccessibleLabels();
     }
+    internal void UpdateAccessibleLabels() { AccessibleName = Localization.T("跳转时间（秒）"); editor.AccessibleName = AccessibleName; decrease.AccessibleName = Localization.T("减少时间"); increase.AccessibleName = Localization.T("增加时间"); }
     internal void FocusEditor(bool selectAll) { editor.Focus(); if (selectAll) editor.SelectAll(); }
     internal void Submit() => ProcessDialogKey(Keys.Enter);
     protected override bool ProcessDialogKey(Keys keyData) {
@@ -68,3 +69,4 @@ sealed class StepArrow(bool forward) : Button
     protected override void OnPaint(PaintEventArgs e) { e.Graphics.Clear(Color.FromArgb(246, 247, 249)); Draw(e.Graphics, ClientRectangle, forward, DeviceDpi, Enabled); }
     protected override void OnCreateControl() { base.OnCreateControl(); TabStop = false; FlatStyle = FlatStyle.Flat; FlatAppearance.BorderSize = 0; }
 }
+

@@ -7,7 +7,7 @@ namespace SyncPlayer;
 static class DeviceIdentity
 {
     const string Alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
-    static string SettingsPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SyncPlayer", "settings.json");
+    static string SettingsPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SyncPlayer", "Remote", "settings.json");
     public static string ShortTag(string identity, int length = 6)
     {
         byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(identity));
@@ -35,7 +35,7 @@ static class DeviceIdentity
     }
     public static string LoadName(string? path = null)
     {
-        try { var saved = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(path ?? SettingsPath)); if (saved?.TryGetValue("name", out var name) == true) return Validate(name); } catch { }
+        try { if (LoadSetting("name", path) is string name) return Validate(name); } catch { }
         return DefaultName;
     }
     public static void SaveName(string name, string? settingsPath = null) => SaveSetting("name", Validate(name), settingsPath);
@@ -56,3 +56,4 @@ static class DeviceIdentity
     public static string DisplayName(DeviceView device, DeviceView[] devices, string ownName) => devices.Count(p => p.Name.Equals(device.Name, StringComparison.OrdinalIgnoreCase)) > 1 || device.Name.Equals(ownName, StringComparison.OrdinalIgnoreCase)
         ? device.Name + " · " + ShortTag(device.Id, 4) : device.Name;
 }
+

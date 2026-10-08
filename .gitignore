@@ -18,3 +18,8 @@ video-diagnostic.txt
 sleep-until-0657.ps1
 *.zip
 *.sha256
+
+node_modules/
+.wrangler/
+tests/ui*.png
+release-work/

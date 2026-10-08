@@ -4,6 +4,11 @@ namespace SyncPlayer;
 
 sealed class IconButton : Button
 {
+    static readonly Lazy<Bitmap> LanguageIcon = new(() => {
+        using var stream = typeof(IconButton).Assembly.GetManifestResourceStream("SyncPlayer.LanguageIcon.png") ?? throw new InvalidOperationException("Language icon missing");
+        using var original = Image.FromStream(stream);
+        return new Bitmap(original);
+    });
     public string Symbol = "play";
     public bool Emphasized;
     public IconButton()
@@ -26,14 +31,14 @@ sealed class IconButton : Button
             g.DrawArc(pen, -8, -8, 16, 16, 45, 280);
             g.FillPolygon(brush, [new(8, -8), new(8, -1), new(1, -3)]);
         } else if (Symbol == "settings") {
-            var points = new List<PointF>();
-            for (int tooth = 0; tooth < 8; tooth++) for (int corner = 0; corner < 4; corner++) {
-                double angle = (tooth * 45 + corner * 11.25 - 90) * Math.PI / 180;
-                float radius = corner is 1 or 2 ? 12 : 8.5f;
-                points.Add(new((float)Math.Cos(angle) * radius, (float)Math.Sin(angle) * radius));
-            }
-            g.FillPolygon(brush, points.ToArray());
-            using var hole = new SolidBrush(BackColor); g.FillEllipse(hole, -4, -4, 8, 8);
+            var icon = LanguageIcon.Value;
+            using var attributes = new System.Drawing.Imaging.ImageAttributes();
+            attributes.SetColorMatrix(new System.Drawing.Imaging.ColorMatrix([
+                [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0],
+                [0, 0, 0, 1, 0], [color.R / 255f, color.G / 255f, color.B / 255f, 0, 1]
+            ]));
+            g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            g.DrawImage(icon, new Rectangle(-12, -12, 24, 24), 0, 0, icon.Width, icon.Height, GraphicsUnit.Pixel, attributes);
         } else {
             // A typographic question mark provides a continuous curve and balanced dot.
             g.ResetTransform();
@@ -43,3 +48,5 @@ sealed class IconButton : Button
         g.ResetTransform();
     }
 }
+
+

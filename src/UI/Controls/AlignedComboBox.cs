@@ -12,3 +12,4 @@ sealed class AlignedComboBox : ComboBox
         e.DrawFocusRectangle();
     }
 }
+

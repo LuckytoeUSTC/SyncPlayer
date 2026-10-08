@@ -40,3 +40,4 @@ sealed class NavigationMonitor : IDisposable
     }
     public void Dispose() { if (keyHook != 0) UnhookWindowsHookEx(keyHook); if (mouseHook != 0) UnhookWindowsHookEx(mouseHook); }
 }
+

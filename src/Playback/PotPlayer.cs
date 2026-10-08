@@ -263,3 +263,4 @@ static class PotPlayer
         if (!PostMessage(h, message, command, value)) throw new IOException(Localization.F("无法控制窗口 {0}，请检查权限或刷新列表", $"0x{h:X}"));
     }
 }
+

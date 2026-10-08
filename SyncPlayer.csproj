@@ -6,14 +6,15 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
-    <Version>2.0.1</Version>
+    <Version>4.0.0</Version><AssemblyName>SyncPlayer</AssemblyName>
     <Product>SyncPlayer</Product>
-    <Description>Local and LAN playback synchronization for PotPlayer.</Description>
+    <Description>One-way PotPlayer synchronization through a relay.</Description>
     <DebugType>none</DebugType>
     <DefineConstants Condition="'$(EnableDiagnostics)' == 'true'">$(DefineConstants);DIAGNOSTICS</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="src/**/*.cs" />
+    <EmbeddedResource Include="src/UI/Assets/language.png" LogicalName="SyncPlayer.LanguageIcon.png" />
     <Compile Include="tests/**/*.cs" Condition="'$(EnableDiagnostics)' == 'true'" />
     <EmbeddedResource Remove="programs-for-reference/**/*" />
     <None Remove="programs-for-reference/**/*" />
@@ -22,5 +23,10 @@
     <None Update="README.zh-*.md" CopyToOutputDirectory="PreserveNewest" />
     <None Update="LICENSE" CopyToOutputDirectory="PreserveNewest" />
     <None Update="NOTICE.md" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="licenses/**/*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Update="relay.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
+
+
+

@@ -26,3 +26,4 @@ sealed class PlaybackChangeDetector
         return (changedState, seek);
     }
 }
+

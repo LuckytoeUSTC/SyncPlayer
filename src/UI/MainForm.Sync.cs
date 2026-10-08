@@ -37,28 +37,28 @@ sealed partial class MainForm
             else PotPlayer.Hold(h, PlaybackTimeline.Position(source.Position, offset, duration));
         }
         if (!rejoin) return false;
-        AlignLocal(); detector.Reset(false); detector.Observe(PotPlayer.Read(masterHandle));
+        AlignLocal(); ObserveSource();
         return true;
     }
     void UpdateRemoteBoundaries()
     {
+        var clock = remoteClock;
+        if(clock == null)return;
+        if(syncMode != SyncMode.Remote || clock.Handle != masterHandle || !lan.Devices.Any(d=>d.CanReceive && d.Id==clock.Peer)) { remoteClock=null; return; }
+        if(clock.State != 2)return;
         double at = Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
-        foreach (var pair in remoteClocks.ToArray()) {
-            var clock = pair.Value;
-            if (!lan.Devices.Any(p => p.Id == clock.Peer && p.Connected && p.CanReceive)) { remoteClocks.Remove(pair.Key); continue; }
-            if (clock.State != 2) continue;
-            int side = PlaybackTimeline.Boundary(clock.Now(at), clock.Offset, clock.Duration);
-            if (side == clock.Boundary) continue;
-            clock.Boundary = side;
-            try {
-                PotPlayer.Hold(pair.Key, PlaybackTimeline.Position(clock.Now(at), clock.Offset, clock.Duration));
-                PotPlayer.Speed(pair.Key, clock.Speed);
-                if (side == 0) PotPlayer.State(pair.Key, 2);
-            } catch (IOException) { remoteClocks.Remove(pair.Key); }
-        }
+        int side = PlaybackTimeline.Boundary(clock.Now(at), clock.Offset, clock.Duration);
+        if (side == clock.Boundary) return;
+        clock.Boundary = side;
+        try {
+            PotPlayer.Hold(clock.Handle, PlaybackTimeline.Position(clock.Now(at), clock.Offset, clock.Duration));
+            PotPlayer.Speed(clock.Handle, clock.Speed);
+            if (side == 0) PotPlayer.State(clock.Handle, 2);
+        } catch (IOException) { remoteClock = null; }
     }
     void Command(int state)
     {
+        if (lan.IsReceiver) return;
         long version = Interlocked.Increment(ref playbackVersion);
         requestedPlaybackState = state; UpdatePlaybackIcon();
         RunControl(() => {
@@ -67,7 +67,7 @@ sealed partial class MainForm
         if (masterHandle == 0) { message = Localization.T("请选择主窗口"); return; }
         if (state == 2 && localFollowers.Length > 0) AlignLocal(2);
         else foreach (var h in new[] { masterHandle }.Concat(localFollowers)) PotPlayer.State(h, state);
-        var sample = PotPlayer.Read(masterHandle); detector.Reset(false); detector.Observe(sample);
+        var sample = ObserveSource();
         Broadcast(state == 2 ? Event(sample) : new WireEvent { type = "event", state = 1 });
         message = state == 2 ? Localization.T("播放") : Localization.T("暂停");
         } finally { if (version == Interlocked.Read(ref playbackVersion)) requestedPlaybackState = -1; }
@@ -75,69 +75,56 @@ sealed partial class MainForm
     }
     void Jump()
     {
+        if (lan.IsReceiver) return;
         int position = (int)(seek.Value * 1000); long version = Interlocked.Increment(ref jumpVersion);
-        RunControl(() => { if (version != Interlocked.Read(ref jumpVersion)) return; AlignLocal(position: position); var sample = PotPlayer.Read(masterHandle); detector.Reset(false); detector.Observe(sample); Broadcast(Event(sample)); message = Localization.T("已跳转"); });
+        RunControl(() => { if (version != Interlocked.Read(ref jumpVersion)) return; AlignLocal(position: position); ObserveSource(broadcast: true); message = Localization.T("已跳转"); });
     }
     void Align() => RunControl(() => {
-        long version = input.Version; AlignLocal(); var sample = PotPlayer.Read(masterHandle); detector.Reset(false); detector.Observe(sample);
+        if (lan.IsReceiver) return;
+        long version = input.Version; AlignLocal(); ObserveSource(broadcast: true);
         if (input.Version != version) detector.Reset(true);
-        Broadcast(Event(sample)); message = Localization.T("已同步");
+        message = Localization.T("已同步");
     });
     static WireEvent Event(PlaybackSample sample) => new() { type = "event", cur = sample.Position, total = sample.Duration, state = sample.State, speed = sample.Speed };
+    PlaybackSample ObserveSource(bool broadcast = false) {
+        var sample = PotPlayer.Read(masterHandle);
+        detector.Reset(false);
+        detector.Observe(sample);
+        if(broadcast)Broadcast(Event(sample)); return sample;
+    }
     void Broadcast(WireEvent operation)
     {
-        if (Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency < suppressNetworkUntil) return;
-        foreach (var device in lan.Devices.Where(d => d.Connected && d.CanSend)) {
-            var selected = device.Windows.Where(w => remoteOptions.TryGetValue(device.Id + ":" + w.Id, out var option) && option.Included)
-                .Select(w => new RemoteTarget(w.Id, remoteOptions[device.Id + ":" + w.Id].Offset - mainOffset)).ToArray();
-            lan.SendControl(device.Id, operation, selected);
-        }
+        if(syncMode != SyncMode.Remote || !lan.HasControl)return;
+        var device = lan.Devices.FirstOrDefault();
+        var window = device == null ? null : PrimaryWindow(device);
+        if(device == null || window is not {Ready:true})return;
+        var option = RemoteOptions(device.Id);
+        lan.SendControl(device.Id, operation, new(window.Id, option.Offset-mainOffset));
     }
-    void ReceiveRemote(WireEvent? operation, RemoteTarget[] selections, string source)
+    void ReceiveRemote(WireEvent? operation, RemoteTarget target, string source)
     {
+        long generation = lan.Generation;
         actions.Enqueue(() => {
-            if (!lan.Devices.Any(p => p.Id == source && p.Connected && p.CanReceive)) return;
-            var current = PotPlayer.List();
-            var selected = selections.Select(t => (Target: t, PlayerWindow: current.FirstOrDefault(p => p.Handle.ToString("X") == t.Id))).Where(p => p.PlayerWindow != null).ToArray();
-            if (selected.Length == 0) return;
-            suppressNetworkUntil = double.PositiveInfinity;
-            try {
-                double now = Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
-                foreach (var pair in selected) if (operation != null) {
-                    nint handle = pair.PlayerWindow!.Handle;
-                    if (!remoteClocks.TryGetValue(handle, out var clock)) clock = new() { Position = PotPlayer.Read(handle, 20484) - pair.Target.Offset, At = now, State = PotPlayer.Read(handle, 20486), Speed = PotPlayer.Read(handle, 20501) };
-                    clock.Position = operation.cur ?? clock.Now(now); clock.At = now;
-                    clock.Offset = pair.Target.Offset; clock.Duration = PotPlayer.Read(handle, 20482); clock.Peer = source;
-                    if (operation.state.HasValue) clock.State = operation.state.Value;
-                    if (operation.speed.HasValue) clock.Speed = operation.speed.Value;
-                    clock.Boundary = PlaybackTimeline.Boundary(clock.Position, clock.Offset, clock.Duration);
-                    remoteClocks[handle] = clock;
-                }
-                foreach (var pair in selected) {
-                    var handle = pair.PlayerWindow!.Handle;
-                    if (pair.Target.Muted.HasValue) { PotPlayer.Mute(handle, pair.Target.Muted.Value); actualMute[handle] = pair.Target.Muted.Value; }
-                    if (operation?.speed is int speed) PotPlayer.Speed(handle, speed);
-                }
-                if (operation?.cur is int position) {
-                    var primary = selected[0]; nint handle = primary.PlayerWindow!.Handle;
-                    foreach (var pair in selected) PotPlayer.Prepare(pair.PlayerWindow!.Handle);
-                    var bias = selected.Skip(1).ToDictionary(p => p.PlayerWindow!.Handle, p => p.Target.Offset);
-                    PotPlayer.Align(handle, selected.Skip(1).Select(p => p.PlayerWindow!.Handle), remoteClocks[handle].State, position, bias, primary.Target.Offset, externalSource: true);
-                    foreach (var pair in selected) {
-                        var sample = PotPlayer.Read(pair.PlayerWindow!.Handle); var clock = remoteClocks[pair.PlayerWindow.Handle];
-                        if (clock.State == 2 && sample.State == 2) {
-                            double basis = sample.Position - clock.Offset;
-                            foreach (var item in selected) { var other = remoteClocks[item.PlayerWindow!.Handle]; other.Position = basis; other.At = sample.At; }
-                            break;
-                        }
-                    }
-                } else if (operation?.state is int state) foreach (var pair in selected) {
-                    var clock = remoteClocks[pair.PlayerWindow!.Handle];
-                    PotPlayer.State(pair.PlayerWindow.Handle, PlaybackTimeline.State(clock.Now(Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency), clock.Offset, clock.Duration, state));
-                }
-                if (selected.Any(p => p.PlayerWindow!.Handle == masterHandle)) { detector.Reset(false); detector.Observe(PotPlayer.Read(masterHandle)); }
-                message = Localization.F("已接收 · {0}", lan.Devices.FirstOrDefault(p => p.Id == source)?.Name ?? source);
-            } finally { suppressNetworkUntil = Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency + .4; }
+            if(syncMode != SyncMode.Remote || generation != lan.Generation || !lan.IsReceiver || masterHandle == 0 || masterHandle.ToString("X") != target.Id)return;
+            var peer = lan.Devices.FirstOrDefault(d => d.Id == source && d.CanReceive);
+            if(peer == null || !WindowReady(masterHandle))return;
+            double now = Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
+            var clock = remoteClock;
+            if(clock == null || clock.Handle != masterHandle)clock = new() { Handle=masterHandle, Position=PotPlayer.Read(masterHandle,20484)-target.Offset, At=now, State=PotPlayer.Read(masterHandle,20486), Speed=PotPlayer.Read(masterHandle,20501) };
+            clock.Position = operation?.cur ?? clock.Now(now); clock.At = now; clock.Offset = target.Offset;
+            clock.Duration = PotPlayer.Read(masterHandle,20482); clock.Peer = source;
+            if(operation?.state is int state)clock.State = state;
+            if(operation?.speed is int speed)clock.Speed = speed;
+            clock.Boundary = PlaybackTimeline.Boundary(clock.Position,clock.Offset,clock.Duration); remoteClock = clock;
+            if(target.Muted is bool muted) { PotPlayer.Mute(masterHandle,muted);actualMute[masterHandle]=muted; }
+            if(operation?.speed is int rate)PotPlayer.Speed(masterHandle,rate);
+            if(operation?.cur is int position) {
+                PotPlayer.Prepare(masterHandle);
+                PotPlayer.Align(masterHandle,[],clock.State,position,masterOffset:target.Offset,externalSource:true);
+                var sample = PotPlayer.Read(masterHandle);
+                if(clock.State == 2 && sample.State == 2) { clock.Position=sample.Position-clock.Offset;clock.At=sample.At; }
+            } else if(operation?.state is int playback)PotPlayer.State(masterHandle,PlaybackTimeline.State(clock.Now(now),clock.Offset,clock.Duration,playback));
+            ObserveSource();message = Localization.F("已接收 · {0}",peer.Name);
         });
     }
     async Task Loop()
@@ -151,14 +138,15 @@ sealed partial class MainForm
                             if (syncing && localFollowers.Length > 0) AlignLocal();
                             needsPrepare = false; detector.Reset(false);
                         }
-                        var sample = PotPlayer.Read(masterHandle); var change = detector.Observe(sample, input.NavigationRecent); bool speedChanged = detector.SpeedChanged;
+                        var sample = PotPlayer.Read(masterHandle); bool becameReady = masterDuration <= 0 && sample.Duration > 0; masterDuration = sample.Duration; var change = detector.Observe(sample, input.NavigationRecent); bool speedChanged = detector.SpeedChanged;
+                        if (becameReady) Broadcast(Event(sample));
                         if (change.seek) input.Consume();
                         if (change.seek || change.state || speedChanged) Trace($"position={sample.Position} state={sample.State} speed={sample.Speed} event={change}");
                         if (syncing) {
                             bool aligned = localFollowers.Length > 0 && (change.seek || change.state && sample.State == 2);
                             if (aligned) {
                                 long version = input.Version; AlignLocal(); AutomaticSeeks += localFollowers.Length;
-                                sample = PotPlayer.Read(masterHandle); detector.Reset(false); detector.Observe(sample);
+                                sample = ObserveSource();
                                 if (input.Version != version) detector.Reset(true);
                             } else {
                                 if (speedChanged) {
@@ -174,10 +162,10 @@ sealed partial class MainForm
                         if (sample.At - lastMutePoll > .8) {
                             var players = localPlayers;
                             foreach (var h in players.Select(p => p.Handle)) { try { actualMute[h] = PotPlayer.Muted(h); } catch (IOException) { } }
-                            lan.Publish(players.Select(p => new LanWindow(p.Handle.ToString("X"), p.ToString(), actualMute.GetValueOrDefault(p.Handle))));
+                            PublishPrimary(masterHandle);
                             lastMutePoll = sample.At;
                         }
-                    } else { playbackState = 0; readings = ""; message = Localization.T("打开视频后选择主窗口"); }
+                    } else { masterDuration = 0; playbackState = 0; readings = ""; if(IsRoutineMessage())message = Localization.T("打开视频后选择主窗口"); }
                     UpdateRemoteBoundaries();
                 } catch (Exception ex) { message = Localization.T("窗口未响应，请刷新或重新选择"); Trace(ex.ToString()); }
             }

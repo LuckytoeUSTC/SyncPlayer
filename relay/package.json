@@ -1,0 +1,1 @@
+{"private":true,"type":"module","scripts":{"dev":"wrangler dev --local","deploy":"wrangler deploy","test":"node --test test/*.test.mjs"},"devDependencies":{"wrangler":"latest","@cloudflare/workers-types":"latest"}}

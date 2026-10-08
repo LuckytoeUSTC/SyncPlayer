@@ -7,3 +7,4 @@ record PlayerWindow(nint Handle, string Title)
     public override string ToString() => string.IsNullOrEmpty(DisplayName) ? Name : DisplayName;
 }
 record PlaybackSample(int Position, int Duration, int State, double At, int Speed = 1000);
+

@@ -8,3 +8,4 @@ static class PlaybackTimeline
     public static int Boundary(double source, int offset, int duration) => source + offset < 0 ? -1 : source + offset >= End(duration) ? 1 : 0;
     public static int State(double source, int offset, int duration, int state) => state == 2 && Boundary(source, offset, duration) == 0 ? 2 : 1;
 }
+
