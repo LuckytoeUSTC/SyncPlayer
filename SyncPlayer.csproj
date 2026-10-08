@@ -8,6 +8,7 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <Version>4.0.0</Version><AssemblyName>SyncPlayer</AssemblyName>
     <Product>SyncPlayer</Product>
+    <ApplicationIcon>src/UI/Assets/app.ico</ApplicationIcon>
     <Description>One-way PotPlayer synchronization through a relay.</Description>
     <DebugType>none</DebugType>
     <DefineConstants Condition="'$(EnableDiagnostics)' == 'true'">$(DefineConstants);DIAGNOSTICS</DefineConstants>
@@ -15,6 +16,7 @@
   <ItemGroup>
     <Compile Include="src/**/*.cs" />
     <EmbeddedResource Include="src/UI/Assets/language.png" LogicalName="SyncPlayer.LanguageIcon.png" />
+    <EmbeddedResource Include="src/UI/Assets/app.ico" LogicalName="SyncPlayer.AppIcon.ico" />
     <Compile Include="tests/**/*.cs" Condition="'$(EnableDiagnostics)' == 'true'" />
     <EmbeddedResource Remove="programs-for-reference/**/*" />
     <None Remove="programs-for-reference/**/*" />

@@ -78,6 +78,8 @@ sealed partial class MainForm : Form
 
     public MainForm(bool runEngine = true)
     {
+        using (var icon = typeof(MainForm).Assembly.GetManifestResourceStream("SyncPlayer.AppIcon.ico"))
+            if (icon != null) { using var image = new Icon(icon); Icon = (Icon)image.Clone(); }
         Text = "SyncPlayer"; ClientSize = new Size(900, 720); MinimumSize = new Size(780, 570);
         AutoScaleMode = AutoScaleMode.Dpi;
         AutoValidate = AutoValidate.EnableAllowFocusChange;
